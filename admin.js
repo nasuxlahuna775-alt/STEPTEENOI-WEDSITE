@@ -1,10 +1,12 @@
 /**
  * admin.js — Full site content management + member CRUD
  * Saves to Firebase (primary) + localStorage (backup)
+ * Uses beautiful toast notifications
  */
 var ADMIN_PASS = 'STEENOI2026';
 var adminMembers = [];
 var siteConfig = null;
+var _actionLog = []; // track all actions for display
 
 // ===================== PASSWORD GATE =====================
 function unlockAdmin() {
@@ -76,16 +78,28 @@ function editMember(id) {
   document.getElementById('fImg').value = m.image || '';
   document.getElementById('fDesc').value = m.desc || '';
   document.getElementById('saveBtn').textContent = '🔄 อัปเดต';
-  // Show image preview
   showImgPreview(m.image);
   document.getElementById('adminForm').scrollIntoView({ behavior: 'smooth' });
 }
 
 function deleteMember(id) {
-  if (!confirm('ต้องการลบสมาชิกนี้?')) return;
-  adminMembers = adminMembers.filter(function(x){ return x.id !== id; });
-  fbRef('members/' + id) && fbRef('members/' + id).remove();
-  renderAdminTable();
+  var m = adminMembers.find(function(x){ return x.id === id; });
+  if (!m) return;
+  // Show confirmation toast instead of confirm()
+  showConfirmToast(
+    'ยืนยันการลบ',
+    'ต้องการลบสมาชิก "' + m.name + '" หรือไม่?',
+    function() {
+      var detail = 'ชื่อ: ' + m.name + '\nยศ: ' + roleLabel(m.role);
+      if (m.facebook) detail += '\nFacebook: ' + m.facebook;
+      if (m.desc) detail += '\nคำอธิบาย: ' + m.desc;
+      adminMembers = adminMembers.filter(function(x){ return x.id !== id; });
+      fbRef('members/' + id) && fbRef('members/' + id).remove();
+      renderAdminTable();
+      logAction('🗑️ ลบสมาชิก', detail);
+      showToast('success', 'ลบสมาชิกเรียบร้อย', 'สมาชิก "' + m.name + '" ถูกลบแล้ว', detail);
+    }
+  );
 }
 
 function saveMember() {
@@ -95,22 +109,33 @@ function saveMember() {
   var fb = document.getElementById('fFb').value.trim();
   var img = document.getElementById('fImg').value.trim();
   var desc = document.getElementById('fDesc').value.trim();
-  if (!name) { alert('กรุณาใส่ชื่อ'); return; }
+  if (!name) {
+    showToast('error', 'บันทึกไม่สำเร็จ', 'กรุณาใส่ชื่อสมาชิก');
+    return;
+  }
+  var detail = 'ชื่อ: ' + name + '\nยศ: ' + roleLabel(role);
+  if (fb) detail += '\nFacebook: ' + fb;
+  if (img) detail += '\nรูป: มี' + (img.length > 100 ? ' (base64)' : ' ' + img.substring(0, 50));
+  if (desc) detail += '\nคำอธิบาย: ' + desc;
+
   if (editId) {
     var m = adminMembers.find(function(x){ return x.id === editId; });
     if (m) {
       m.name = name; m.role = role; m.facebook = fb; m.image = img; m.desc = desc;
     }
     fbSet('members/' + editId, { name:name, role:role, facebook:fb, image:img, desc:desc });
+    logAction('✏️ แก้ไขสมาชิก', detail);
+    showToast('success', 'อัปเดตสมาชิกเรียบร้อย', '"' + name + '" ถูกอัปเดตแล้ว', detail);
   } else {
     var newId = 'm' + Date.now();
     var newM = { id:newId, name:name, role:role, facebook:fb, image:img, desc:desc };
     adminMembers.push(newM);
     fbSet('members/' + newId, newM);
+    logAction('➕ เพิ่มสมาชิก', detail);
+    showToast('success', 'บันทึกสมาชิกเรียบร้อย', '"' + name + '" ถูกเพิ่มแล้ว', detail);
   }
   resetMemberForm();
   renderAdminTable();
-  alert('✅ บันทึกสมาชิกเรียบร้อย!');
 }
 
 function resetMemberForm() {
@@ -137,7 +162,6 @@ function showImgPreview(url) {
   }
 }
 
-// Convert uploaded file to base64 data URL
 function handleImageUpload(file) {
   if (!file) return;
   document.getElementById('fImgFileName').textContent = file.name;
@@ -146,6 +170,7 @@ function handleImageUpload(file) {
     var dataUrl = e.target.result;
     document.getElementById('fImg').value = dataUrl;
     showImgPreview(dataUrl);
+    showToast('info', 'อัปโหลดรูปเรียบร้อย', 'ไฟล์: ' + file.name, 'ขนาด: ' + (file.size / 1024).toFixed(1) + ' KB');
   };
   reader.readAsDataURL(file);
 }
@@ -205,9 +230,12 @@ function renderPartnersEditor() {
   container.querySelectorAll('.remove-partner-btn').forEach(function(btn) {
     btn.addEventListener('click', function() {
       var idx = parseInt(this.dataset.idx);
+      var pName = (siteConfig.partners[idx] || {}).name || '(ว่าง)';
       siteConfig.partners.splice(idx, 1);
       saveSiteConfig(siteConfig);
       renderPartnersEditor();
+      logAction('🗑️ ลบ Alliance', pName);
+      showToast('warning', 'ลบ Alliance เรียบร้อย', '"' + pName + '" ถูกลบแล้ว');
     });
   });
 }
@@ -217,9 +245,11 @@ function addPartner() {
   siteConfig.partners.push({ name: '', url: '' });
   saveSiteConfig(siteConfig);
   renderPartnersEditor();
+  showToast('info', 'เพิ่ม Alliance', 'เพิ่มช่อง Alliance ใหม่แล้ว กรุณากรอกชื่อและลิงก์');
 }
 
 function saveAllSiteContent() {
+  var changes = [];
   document.querySelectorAll('.site-cfg-input[data-key]').forEach(function(input) {
     var keys = input.dataset.key.split('.');
     var obj = siteConfig;
@@ -227,7 +257,13 @@ function saveAllSiteContent() {
       if (!obj[keys[i]]) obj[keys[i]] = {};
       obj = obj[keys[i]];
     }
+    var oldVal = obj[keys[keys.length - 1]];
     obj[keys[keys.length - 1]] = input.value;
+    // Track changes
+    var label = input.closest('.admin-form-row').querySelector('label');
+    if (label && oldVal !== input.value) {
+      changes.push(label.textContent + ': "' + input.value + '"');
+    }
   });
 
   document.querySelectorAll('.partner-name-input').forEach(function(input) {
@@ -240,7 +276,9 @@ function saveAllSiteContent() {
   });
 
   saveSiteConfig(siteConfig);
-  alert('✅ บันทึกข้อความทั้งหมดเรียบร้อย! (Firebase + localStorage)');
+  var detail = changes.length > 0 ? changes.join('\n') : 'ไม่มีการเปลี่ยนแปลง';
+  logAction('✏️ แก้ไขข้อความ', detail);
+  showToast('success', 'บันทึกข้อความเรียบร้อย', 'บันทึงเข้า Firebase + localStorage แล้ว', detail);
 }
 
 // ===================== MUSIC ADMIN =====================
@@ -261,18 +299,119 @@ function saveMusic() {
   siteConfig.music.url = url;
   siteConfig.music.title = title;
   saveSiteConfig(siteConfig);
-  // Also update the player immediately
   if (typeof setMusicUrl === 'function') setMusicUrl(url);
   if (typeof setMusicTitle === 'function') setMusicTitle(title);
-  alert('✅ บันทึกเพลงเรียบร้อย!');
+  var detail = 'URL: ' + (url || '(ว่าง)') + '\nชื่อเพลง: ' + (title || '(ว่าง)');
+  logAction('🎵 แก้ไขเพลง', detail);
+  showToast('success', 'บันทึกเพลงเรียบร้อย', 'เพลงถูกอัปเดตแล้ว', detail);
 }
 
 function testMusic() {
   var url = document.getElementById('fMusicUrl').value.trim();
-  if (!url) { alert('กรุณาใส่ลิงก์เพลงก่อน'); return; }
+  if (!url) {
+    showToast('error', 'ทดสอบไม่ได้', 'กรุณาใส่ลิงก์เพลงก่อน');
+    return;
+  }
   if (typeof setMusicUrl === 'function') {
     setMusicUrl(url);
+    showToast('info', 'กำลังเล่นเพลง', 'ทดสอบเพลงที่ใส่ กด ▶ เพื่อเล่น');
   }
+}
+
+// ===================== ACTION LOG =====================
+function logAction(title, detail) {
+  var now = new Date();
+  var time = now.getHours().toString().padStart(2,'0') + ':' +
+    now.getMinutes().toString().padStart(2,'0') + ':' +
+    now.getSeconds().toString().padStart(2,'0');
+  _actionLog.unshift({ time: time, title: title, detail: detail });
+  if (_actionLog.length > 50) _actionLog.pop(); // keep max 50
+}
+
+function getActionLog() {
+  return _actionLog;
+}
+
+// ===================== TOAST NOTIFICATIONS =====================
+var toastContainer = null;
+function getToastContainer() {
+  if (!toastContainer) {
+    toastContainer = document.createElement('div');
+    toastContainer.className = 'toast-container';
+    document.body.appendChild(toastContainer);
+  }
+  return toastContainer;
+}
+
+function showToast(type, title, message, detail) {
+  var icons = { success: '✅', error: '❌', info: 'ℹ️', warning: '⚠️' };
+  var container = getToastContainer();
+  var el = document.createElement('div');
+  el.className = 'toast ' + type;
+  el.innerHTML =
+    '<div class="toast-icon">' + (icons[type] || '✨') + '</div>' +
+    '<div class="toast-body">' +
+      '<div class="toast-title">' + escHtml(title) + '</div>' +
+      '<div class="toast-message">' + escHtml(message) + '</div>' +
+      (detail ? '<div class="toast-detail">' + escHtml(detail).replace(/\n/g, '<br>') + '</div>' : '') +
+    '</div>' +
+    '<button class="toast-close">✕</button>' +
+    '<div class="toast-progress" style="width:100%"></div>';
+  container.appendChild(el);
+
+  // Close button
+  el.querySelector('.toast-close').addEventListener('click', function() {
+    removeToast(el);
+  });
+
+  // Animate in
+  requestAnimationFrame(function() {
+    el.classList.add('show');
+  });
+
+  // Progress bar animation
+  var progress = el.querySelector('.toast-progress');
+  var duration = detail ? 6000 : 4000; // longer if has detail
+  progress.style.transitionDuration = duration + 'ms';
+  setTimeout(function() { progress.style.width = '0%'; }, 50);
+
+  // Auto remove
+  setTimeout(function() { removeToast(el); }, duration + 300);
+}
+
+function removeToast(el) {
+  el.classList.remove('show');
+  el.classList.add('hide');
+  setTimeout(function() { if (el.parentNode) el.parentNode.removeChild(el); }, 400);
+}
+
+// Confirm toast with OK/CANCEL
+function showConfirmToast(title, message, onConfirm) {
+  var container = getToastContainer();
+  var el = document.createElement('div');
+  el.className = 'toast warning';
+  el.innerHTML =
+    '<div class="toast-icon">⚠️</div>' +
+    '<div class="toast-body">' +
+      '<div class="toast-title">' + escHtml(title) + '</div>' +
+      '<div class="toast-message">' + escHtml(message) + '</div>' +
+      '<div style="margin-top:10px;display:flex;gap:8px">' +
+        '<button class="toast-confirm-btn toast-confirm-yes" style="padding:6px 16px;background:rgba(220,60,60,0.2);border:1px solid rgba(220,60,60,0.4);border-radius:4px;color:#f87171;cursor:pointer;font-family:inherit;font-size:0.75rem">ยืนยันลบ</button>' +
+        '<button class="toast-confirm-btn toast-confirm-no" style="padding:6px 16px;background:rgba(255,255,255,0.05);border:1px solid var(--chrome);border-radius:4px;color:var(--muted);cursor:pointer;font-family:inherit;font-size:0.75rem">ยกเลิก</button>' +
+      '</div>' +
+    '</div>' +
+    '<button class="toast-close">✕</button>';
+  container.appendChild(el);
+
+  el.querySelector('.toast-close').addEventListener('click', function() { removeToast(el); });
+  el.querySelector('.toast-confirm-no').addEventListener('click', function() { removeToast(el); });
+  el.querySelector('.toast-confirm-yes').addEventListener('click', function() {
+    removeToast(el);
+    if (onConfirm) onConfirm();
+  });
+
+  requestAnimationFrame(function() { el.classList.add('show'); });
+  // Don't auto-remove confirm toasts
 }
 
 // ===================== HELPERS =====================
@@ -297,9 +436,11 @@ document.addEventListener('DOMContentLoaded', function() {
   function tryGate() {
     if (gateInput.value === ADMIN_PASS) {
       unlockAdmin();
+      showToast('success', 'เข้าสู่ระบบสำเร็จ', 'ยินดีต้อนรับเข้าสู่ Admin Panel');
     } else {
       gateError.style.display = 'block';
       gateInput.value = '';
+      showToast('error', 'รหัสผ่านไม่ถูกต้อง', 'กรุณาลองใหม่');
     }
   }
   gateBtn.addEventListener('click', tryGate);
