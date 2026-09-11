@@ -1,17 +1,17 @@
 /**
- * firebase-config.js — Placeholder for Firebase config
- * Replace with real Firebase credentials when available.
- * The site works with demo data fallback if Firebase is not configured.
+ * firebase-config.js — Firebase config
+ * Configured with actual Firebase credentials.
  */
-// var firebaseConfig = {
-//   apiKey: "YOUR_KEY",
-//   authDomain: "YOUR_PROJECT.firebaseapp.com",
-//   databaseURL: "https://YOUR_PROJECT-default-rtdb.firebaseio.com",
-//   projectId: "YOUR_PROJECT",
-//   storageBucket: "YOUR_PROJECT.appspot.com",
-//   messagingSenderId: "YOUR_ID",
-//   appId: "YOUR_APP_ID"
-// };
-// if (typeof firebase !== 'undefined') {
-//   firebase.initializeApp(firebaseConfig);
-// }
+var firebaseConfig = {
+  apiKey: "AIzaSyBwKXYJji4qQNoOvhcqpDBWHdpPLQ4sXJ0",
+  authDomain: "tarsaray1.firebaseapp.com",
+  databaseURL: "https://tarsaray1-default-rtdb.firebaseio.com",
+  projectId: "tarsaray1",
+  storageBucket: "tarsaray1.firebasestorage.app",
+  messagingSenderId: "782765725846",
+  appId: "1:782765725846:web:d645224c9942a0075acab7"
+};
+
+if (typeof firebase !== 'undefined') {
+  firebase.initializeApp(firebaseConfig);
+}
