@@ -1,5 +1,6 @@
 /**
  * admin.js — Full site content management + member CRUD
+ * Saves to Firebase (primary) + localStorage (backup)
  */
 var ADMIN_PASS = 'STEENOI2026';
 var adminMembers = [];
@@ -11,28 +12,21 @@ function unlockAdmin() {
   document.getElementById('adminPanel').style.display = 'block';
   loadAdminMembers();
   loadSiteConfigAdmin();
+  loadMusicAdmin();
 }
 
 // ===================== MEMBER CRUD =====================
 function loadAdminMembers() {
-  if (typeof firebase !== 'undefined' && firebase.apps && firebase.apps.length && firebase.database) {
-    try {
-      firebase.database().ref('members').once('value', function(snap) {
-        var data = snap.val();
-        if (data && typeof data === 'object') {
-          adminMembers = Object.entries(data).map(function(e) {
-            return Object.assign({ id: e[0] }, e[1]);
-          });
-        } else {
-          adminMembers = DEMO_MEMBERS.slice();
-        }
-        renderAdminTable();
+  fbGet('members', function(data) {
+    if (data && typeof data === 'object') {
+      adminMembers = Object.entries(data).map(function(e) {
+        return Object.assign({ id: e[0] }, e[1]);
       });
-      return;
-    } catch(e) {}
-  }
-  adminMembers = DEMO_MEMBERS.slice();
-  renderAdminTable();
+    } else {
+      adminMembers = DEMO_MEMBERS.slice();
+    }
+    renderAdminTable();
+  });
 }
 
 function renderAdminTable() {
@@ -41,11 +35,23 @@ function renderAdminTable() {
   tbody.innerHTML = '';
   adminMembers.forEach(function(m) {
     var tr = document.createElement('tr');
-    tr.innerHTML = '<td>' + escHtml(m.name) + '</td>' +
-      '<td>' + roleLabel(m.role) + '</td>' +
+    // Avatar thumbnail
+    var imgCell = '<td class="td-avatar">';
+    if (m.image) {
+      imgCell += '<img src="' + escHtml(m.image) + '" class="admin-thumb" onerror="this.style.display=\'none\'">';
+    } else {
+      imgCell += '<div class="admin-thumb-placeholder">?</div>';
+    }
+    imgCell += '</td>';
+
+    tr.innerHTML = imgCell +
+      '<td>' + escHtml(m.name) + '</td>' +
+      '<td><span class="role-badge role-' + (m.role||'member') + '">' + roleLabel(m.role) + '</span></td>' +
+      '<td class="td-fb">' + (m.facebook ? '<a href="' + escHtml(m.facebook) + '" target="_blank" class="fb-link">' + escHtml(m.facebook) + '</a>' : '<span class="no-data">—</span>') + '</td>' +
+      '<td class="td-desc">' + (m.desc ? escHtml(m.desc) : '<span class="no-data">—</span>') + '</td>' +
       '<td>' +
-        '<span class="action-link" data-id="' + m.id + '" data-action="edit">แก้ไข</span>' +
-        '<span class="action-link delete-link" data-id="' + m.id + '" data-action="delete">ลบ</span>' +
+        '<span class="action-link" data-id="' + m.id + '" data-action="edit">✏️ แก้ไข</span>' +
+        '<span class="action-link delete-link" data-id="' + m.id + '" data-action="delete">🗑️ ลบ</span>' +
       '</td>';
     tbody.appendChild(tr);
   });
@@ -69,17 +75,16 @@ function editMember(id) {
   document.getElementById('fFb').value = m.facebook || '';
   document.getElementById('fImg').value = m.image || '';
   document.getElementById('fDesc').value = m.desc || '';
-  document.getElementById('saveBtn').textContent = 'อัปเดต';
-  // scroll to form
+  document.getElementById('saveBtn').textContent = '🔄 อัปเดต';
+  // Show image preview
+  showImgPreview(m.image);
   document.getElementById('adminForm').scrollIntoView({ behavior: 'smooth' });
 }
 
 function deleteMember(id) {
   if (!confirm('ต้องการลบสมาชิกนี้?')) return;
   adminMembers = adminMembers.filter(function(x){ return x.id !== id; });
-  if (typeof firebase !== 'undefined' && firebase.apps && firebase.apps.length && firebase.database) {
-    try { firebase.database().ref('members/' + id).remove(); } catch(e){}
-  }
+  fbRef('members/' + id) && fbRef('members/' + id).remove();
   renderAdminTable();
 }
 
@@ -96,19 +101,16 @@ function saveMember() {
     if (m) {
       m.name = name; m.role = role; m.facebook = fb; m.image = img; m.desc = desc;
     }
-    if (typeof firebase !== 'undefined' && firebase.apps && firebase.apps.length && firebase.database) {
-      try { firebase.database().ref('members/' + editId).update({ name:name, role:role, facebook:fb, image:img, desc:desc }); } catch(e){}
-    }
+    fbSet('members/' + editId, { name:name, role:role, facebook:fb, image:img, desc:desc });
   } else {
     var newId = 'm' + Date.now();
     var newM = { id:newId, name:name, role:role, facebook:fb, image:img, desc:desc };
     adminMembers.push(newM);
-    if (typeof firebase !== 'undefined' && firebase.apps && firebase.apps.length && firebase.database) {
-      try { firebase.database().ref('members/' + newId).set(newM); } catch(e){}
-    }
+    fbSet('members/' + newId, newM);
   }
   resetMemberForm();
   renderAdminTable();
+  alert('✅ บันทึกสมาชิกเรียบร้อย!');
 }
 
 function resetMemberForm() {
@@ -119,17 +121,45 @@ function resetMemberForm() {
   document.getElementById('fImg').value = '';
   document.getElementById('fDesc').value = '';
   document.getElementById('saveBtn').textContent = 'บันทึก';
+  document.getElementById('imgPreview').style.display = 'none';
+  document.getElementById('fImgFileName').textContent = 'ยังไม่ได้เลือกรูป';
+}
+
+// ===================== IMAGE UPLOAD HELPERS =====================
+function showImgPreview(url) {
+  var preview = document.getElementById('imgPreview');
+  var previewImg = document.getElementById('imgPreviewImg');
+  if (url && preview && previewImg) {
+    previewImg.src = url;
+    preview.style.display = 'block';
+  } else if (preview) {
+    preview.style.display = 'none';
+  }
+}
+
+// Convert uploaded file to base64 data URL
+function handleImageUpload(file) {
+  if (!file) return;
+  document.getElementById('fImgFileName').textContent = file.name;
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    var dataUrl = e.target.result;
+    document.getElementById('fImg').value = dataUrl;
+    showImgPreview(dataUrl);
+  };
+  reader.readAsDataURL(file);
 }
 
 // ===================== SITE CONTENT EDITOR =====================
 function loadSiteConfigAdmin() {
-  siteConfig = loadSiteConfig();
-  renderSiteEditor();
-  renderPartnersEditor();
+  loadSiteConfig(function(cfg) {
+    siteConfig = cfg;
+    renderSiteEditor();
+    renderPartnersEditor();
+  });
 }
 
 function renderSiteEditor() {
-  // HOME fields
   var homeFields = [
     { key: 'home.title', label: 'หัวข้อหน้าแรก', val: siteConfig.home.title },
     { key: 'home.subtitle', label: 'คำบรรยาย', val: siteConfig.home.subtitle },
@@ -141,7 +171,7 @@ function renderSiteEditor() {
     { key: 'members.searchPlaceholder', label: 'Placeholder ค้นหา', val: siteConfig.members.searchPlaceholder },
     { key: 'members.filterAll', label: 'ข้อความปุ่ม ทั้งหมด', val: siteConfig.members.filterAll },
     { key: 'members.footer', label: 'ข้อความ Footer', val: siteConfig.members.footer },
-    { key: 'music.title', label: 'ข้อความเพลง', val: siteConfig.music.title },
+    { key: 'music.title', label: 'ข้อความเพลง (หน้าเว็บ)', val: siteConfig.music.title },
   ];
 
   var container = document.getElementById('siteEditorFields');
@@ -172,7 +202,6 @@ function renderPartnersEditor() {
     container.appendChild(row);
   });
 
-  // bind remove
   container.querySelectorAll('.remove-partner-btn').forEach(function(btn) {
     btn.addEventListener('click', function() {
       var idx = parseInt(this.dataset.idx);
@@ -191,7 +220,6 @@ function addPartner() {
 }
 
 function saveAllSiteContent() {
-  // Collect all text inputs
   document.querySelectorAll('.site-cfg-input[data-key]').forEach(function(input) {
     var keys = input.dataset.key.split('.');
     var obj = siteConfig;
@@ -202,22 +230,49 @@ function saveAllSiteContent() {
     obj[keys[keys.length - 1]] = input.value;
   });
 
-  // Collect partner fields
   document.querySelectorAll('.partner-name-input').forEach(function(input) {
     var idx = parseInt(input.dataset.idx);
-    if (siteConfig.partners[idx]) {
-      siteConfig.partners[idx].name = input.value;
-    }
+    if (siteConfig.partners[idx]) siteConfig.partners[idx].name = input.value;
   });
   document.querySelectorAll('.partner-url-input').forEach(function(input) {
     var idx = parseInt(input.dataset.idx);
-    if (siteConfig.partners[idx]) {
-      siteConfig.partners[idx].url = input.value;
-    }
+    if (siteConfig.partners[idx]) siteConfig.partners[idx].url = input.value;
   });
 
   saveSiteConfig(siteConfig);
-  alert('✅ บันทึกข้อความทั้งหมดเรียบร้อย! รีเฟรชหน้าเว็บเพื่อดูผล');
+  alert('✅ บันทึกข้อความทั้งหมดเรียบร้อย! (Firebase + localStorage)');
+}
+
+// ===================== MUSIC ADMIN =====================
+function loadMusicAdmin() {
+  loadSiteConfig(function(cfg) {
+    var urlInput = document.getElementById('fMusicUrl');
+    var titleInput = document.getElementById('fMusicTitle');
+    if (urlInput && cfg.music && cfg.music.url) urlInput.value = cfg.music.url;
+    if (titleInput && cfg.music && cfg.music.title) titleInput.value = cfg.music.title;
+  });
+}
+
+function saveMusic() {
+  var url = document.getElementById('fMusicUrl').value.trim();
+  var title = document.getElementById('fMusicTitle').value.trim();
+  if (!siteConfig) return;
+  if (!siteConfig.music) siteConfig.music = {};
+  siteConfig.music.url = url;
+  siteConfig.music.title = title;
+  saveSiteConfig(siteConfig);
+  // Also update the player immediately
+  if (typeof setMusicUrl === 'function') setMusicUrl(url);
+  if (typeof setMusicTitle === 'function') setMusicTitle(title);
+  alert('✅ บันทึกเพลงเรียบร้อย!');
+}
+
+function testMusic() {
+  var url = document.getElementById('fMusicUrl').value.trim();
+  if (!url) { alert('กรุณาใส่ลิงก์เพลงก่อน'); return; }
+  if (typeof setMusicUrl === 'function') {
+    setMusicUrl(url);
+  }
 }
 
 // ===================== HELPERS =====================
@@ -235,7 +290,6 @@ function roleLabel(role) {
 
 // ===================== DOM READY =====================
 document.addEventListener('DOMContentLoaded', function() {
-  // Password gate
   var gateBtn = document.getElementById('gateBtn');
   var gateInput = document.getElementById('gateInput');
   var gateError = document.getElementById('gateError');
@@ -251,15 +305,37 @@ document.addEventListener('DOMContentLoaded', function() {
   gateBtn.addEventListener('click', tryGate);
   gateInput.addEventListener('keydown', function(e) { if (e.key === 'Enter') tryGate(); });
 
-  // Member form
   document.getElementById('saveBtn').addEventListener('click', saveMember);
   document.getElementById('cancelBtn').addEventListener('click', resetMemberForm);
 
-  // Site content save
+  // Image file upload handler
+  var imgFile = document.getElementById('fImgFile');
+  if (imgFile) {
+    imgFile.addEventListener('change', function() {
+      if (this.files && this.files[0]) {
+        handleImageUpload(this.files[0]);
+      }
+    });
+  }
+
+  // Image URL input: show preview on change
+  var fImgInput = document.getElementById('fImg');
+  if (fImgInput) {
+    fImgInput.addEventListener('input', function() {
+      showImgPreview(this.value.trim());
+    });
+  }
+
   var siteSaveBtn = document.getElementById('siteSaveBtn');
   if (siteSaveBtn) siteSaveBtn.addEventListener('click', saveAllSiteContent);
 
-  // Add partner
   var addPartnerBtn = document.getElementById('addPartnerBtn');
   if (addPartnerBtn) addPartnerBtn.addEventListener('click', addPartner);
+
+  // Music tab buttons
+  var musicSaveBtn = document.getElementById('musicSaveBtn');
+  if (musicSaveBtn) musicSaveBtn.addEventListener('click', saveMusic);
+
+  var musicTestBtn = document.getElementById('musicTestBtn');
+  if (musicTestBtn) musicTestBtn.addEventListener('click', testMusic);
 });

@@ -1033,6 +1033,112 @@ a:hover { color: var(--fg); }
   box-shadow: 0 0 10px rgba(255,0,0,0.15);
 }
 
+/* --- Admin Table Enhancements --- */
+.admin-thumb {
+  width: 36px;
+  height: 36px;
+  border-radius: 4px;
+  object-fit: cover;
+  border: 1px solid var(--chrome);
+}
+.admin-thumb-placeholder {
+  width: 36px;
+  height: 36px;
+  border-radius: 4px;
+  background: var(--card);
+  border: 1px solid var(--chrome);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+.td-avatar { width: 48px; text-align: center; }
+.td-fb { max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.td-desc { max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fb-link {
+  color: #9999ff;
+  text-decoration: none;
+  font-size: 0.72rem;
+}
+.fb-link:hover {
+  color: #bbbfff;
+  text-decoration: underline;
+}
+.no-data {
+  color: rgba(255,255,255,0.2);
+  font-style: italic;
+}
+.role-badge {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 4px;
+  font-family: 'Orbitron',monospace;
+  font-size: 0.52rem;
+  letter-spacing: 0.1em;
+  font-weight: 600;
+  text-shadow: var(--glow-sm);
+}
+.role-owner {
+  background: rgba(255,255,255,0.15);
+  color: #fff;
+  border: 1px solid rgba(255,255,255,0.25);
+}
+.role-core {
+  background: rgba(180,180,180,0.12);
+  color: #ccc;
+  border: 1px solid rgba(180,180,180,0.2);
+}
+.role-member {
+  background: rgba(80,80,80,0.2);
+  color: #999;
+  border: 1px solid rgba(80,80,80,0.15);
+}
+
+/* --- Image Upload --- */
+.img-upload-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 6px;
+}
+.img-upload-btn {
+  display: inline-block;
+  padding: 6px 14px;
+  background: rgba(20,20,20,0.8);
+  border: 1px solid var(--chrome);
+  border-radius: 4px;
+  color: var(--silver);
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.img-upload-btn:hover {
+  border-color: var(--fg);
+  color: var(--fg);
+}
+.img-upload-name {
+  font-size: 0.72rem;
+  color: var(--muted);
+}
+.img-preview {
+  margin-top: 10px;
+  text-align: center;
+}
+.img-preview img {
+  max-width: 120px;
+  max-height: 120px;
+  border-radius: 6px;
+  border: 1px solid var(--chrome);
+  object-fit: cover;
+}
+.admin-hint-inline {
+  display: block;
+  font-size: 0.7rem;
+  color: rgba(255,255,255,0.3);
+  margin-top: 4px;
+}
+
 /* --- Site Config Input in Admin --- */
 .site-cfg-input {
   padding: 10px 14px;
@@ -1069,4 +1175,9 @@ a:hover { color: var(--fg); }
   .admin-form { padding: 20px; }
   .admin-tabs { gap: 2px; }
   .admin-tab { padding: 10px 12px; font-size: 0.75rem; }
+  .admin-table { font-size: 0.65rem; }
+  .admin-table th { font-size: 0.45rem; padding: 10px 8px; }
+  .admin-table td { padding: 8px 8px; }
+  .td-fb, .td-desc { max-width: 100px; }
+  .admin-thumb { width: 28px; height: 28px; }
 }

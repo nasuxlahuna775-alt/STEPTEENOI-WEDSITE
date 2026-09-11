@@ -1,264 +1,189 @@
 /**
- * members.js — Monochrome card design: square avatars, dark badges, white-circle FB
+ * members.js — Load & display members
+ * Primary: Firebase, Fallback: demo data
  */
-var memberData = [];
-var currentPage = 1;
-var perPage = 10;
+var allMembers = [];
 var currentFilter = 'all';
-var searchQuery = '';
 
-var DEMO_MEMBERS = [
-  { id:'1', name:'TAR DIFFSTYLE', role:'owner', image:'', facebook:'https://facebook.com/tardiffstyle', desc:'ผู้ก่อตั้ง HOUSE OF STEPTEENOI' },
-  { id:'2', name:'KAWIN SOYBAD', role:'core', image:'', facebook:'https://facebook.com/kawin', desc:'Co-Leader ผู้คุมกฎ' },
-  { id:'3', name:'Anna Tongkao', role:'member', image:'', facebook:'', desc:'สมาชิก veteran' },
-  { id:'4', name:'MeiKoi [OKI]', role:'member', image:'', facebook:'', desc:'มือร่าน พร้อมลุย' },
-  { id:'5', name:'Never Alltime', role:'member', image:'', facebook:'', desc:'สมาชิกไฟแรง' },
-  { id:'6', name:'Rxyz Luvmoney', role:'member', image:'', facebook:'', desc:'ช่างภาพประจำบ้าน' },
-  { id:'7', name:'STEPTEENOI Benz', role:'member', image:'', facebook:'', desc:'ขับรถเก่ง' },
-  { id:'8', name:'STEPTEENOI Fluke', role:'member', image:'', facebook:'', desc:'มือปืนประจำกลุ่ม' },
-  { id:'9', name:'STEPTEENOI Palm', role:'member', image:'', facebook:'', desc:'วิศวกรระบบ' },
-  { id:'10', name:'STEPTEENOI Nat', role:'member', image:'', facebook:'', desc:'ผู้บริหารจัดการ' },
-  { id:'11', name:'STEPTEENOI Pok', role:'member', image:'', facebook:'', desc:'พ่อค้าคนกลาง' },
-  { id:'12', name:'STEPTEENOI Mix', role:'member', image:'', facebook:'', desc:'สมาชิกหญิงเข้มแข็ง' },
-  { id:'13', name:'STEPTEENOI Punn', role:'member', image:'', facebook:'', desc:'น้องใหม่สายลับ' },
-  { id:'14', name:'STEPTEENOI Tang', role:'member', image:'', facebook:'', desc:'คนขับเฮลิคอปเตอร์' },
-  { id:'15', name:'STEPTEENOI Win', role:'member', image:'', facebook:'', desc:'หมอประจำกลุ่ม' },
-];
-
-function getMemberImage(member) {
-  if (member.image && member.image.trim()) return member.image;
-  var idx = parseInt(member.id) || 0;
-  if (typeof MEMBER_IMAGES !== 'undefined' && MEMBER_IMAGES.length > 0) {
-    return MEMBER_IMAGES[idx % MEMBER_IMAGES.length];
-  }
-  return '';
+function loadMembers(callback) {
+  fbGet('members', function(data) {
+    if (data && typeof data === 'object') {
+      allMembers = Object.values(data);
+    } else {
+      allMembers = DEMO_MEMBERS.slice();
+    }
+    if (callback) callback(allMembers);
+  });
 }
 
-function getInitials(name) {
-  var parts = name.split(' ');
-  if (parts.length >= 2) return parts[0][0] + parts[parts.length-1][0];
-  return name.substring(0, 2);
+function renderMembers() {
+  var grid = document.getElementById('membersGrid');
+  if (!grid) return;
+  grid.innerHTML = '';
+
+  var search = (document.getElementById('searchInput').value || '').toLowerCase();
+  var filtered = allMembers.filter(function(m) {
+    var matchRole = currentFilter === 'all' || m.role === currentFilter;
+    var matchSearch = !search || m.name.toLowerCase().indexOf(search) >= 0;
+    return matchRole && matchSearch;
+  });
+
+  // Sort: owner first, then core, then member
+  var roleOrder = { owner: 0, core: 1, member: 2 };
+  filtered.sort(function(a, b) {
+    return (roleOrder[a.role] || 2) - (roleOrder[b.role] || 2);
+  });
+
+  // Group by role
+  var groups = { owner: [], core: [], member: [] };
+  filtered.forEach(function(m) {
+    if (!groups[m.role]) groups[m.role] = [];
+    groups[m.role].push(m);
+  });
+
+  // Render each group
+  if (groups.owner.length) renderGroup(grid, 'OWNER', groups.owner, true);
+  if (groups.core.length) renderGroup(grid, 'LEADER', groups.core, false);
+  if (groups.member.length) renderGroup(grid, 'MEMBERS', groups.member, false);
 }
 
-function roleLabel(role) {
-  if (role === 'owner') return 'OWNER';
-  if (role === 'core') return 'LEADER';
-  return 'MEMBERS';
-}
+function renderGroup(container, title, members, isOwner) {
+  // Group title with decorative lines
+  var groupDiv = document.createElement('div');
+  groupDiv.className = 'member-group';
+  groupDiv.innerHTML = '<div class="group-title"><span>' + title + '</span></div>';
+  container.appendChild(groupDiv);
 
-function loadMembers() {
-  if (typeof firebase !== 'undefined' && firebase.apps.length && firebase.database) {
-    try {
-      firebase.database().ref('members').once('value', function(snap) {
-        var data = snap.val();
-        if (data && typeof data === 'object') {
-          memberData = Object.values(data);
-        } else {
-          memberData = DEMO_MEMBERS.slice();
-        }
-        renderRoster();
-      });
-      return;
-    } catch(e) {}
-  }
-  memberData = DEMO_MEMBERS.slice();
-  renderRoster();
-}
-
-function filteredMembers() {
-  var list = memberData;
-  if (currentFilter !== 'all') {
-    list = list.filter(function(m) { return m.role === currentFilter; });
-  }
-  if (searchQuery) {
-    var q = searchQuery.toLowerCase();
-    list = list.filter(function(m) { return m.name.toLowerCase().indexOf(q) !== -1; });
-  }
-  return list;
-}
-
-function renderRoster() {
-  var roster = document.getElementById('roster');
-  if (!roster) return;
-  roster.innerHTML = '';
-
-  var filtered = filteredMembers();
-  if (filtered.length === 0) {
-    roster.innerHTML = '<div style="text-align:center;color:#555;padding:40px">ไม่พบสมาชิก</div>';
+  // Owner: centered, large card
+  if (isOwner && members.length === 1) {
+    var ownerCard = createMemberCard(members[0], true);
+    var ownerWrap = document.createElement('div');
+    ownerWrap.className = 'owner-center';
+    ownerWrap.appendChild(ownerCard);
+    container.appendChild(ownerWrap);
     return;
   }
 
-  var owners = filtered.filter(function(m){ return m.role==='owner'; });
-  var cores  = filtered.filter(function(m){ return m.role==='core'; });
-  var members = filtered.filter(function(m){ return m.role==='member'; });
-
-  // OWNER — centered, larger card
-  if (owners.length) {
-    var ownerGroup = document.createElement('div');
-    ownerGroup.className = 'roster-group';
-    ownerGroup.innerHTML = '<h3 class="group-title">OWNER</h3>';
-    var ownerRow = document.createElement('div');
-    ownerRow.className = 'owner-row';
-    owners.forEach(function(m) {
-      var card = makeCard(m, true);
-      ownerRow.appendChild(card);
-    });
-    ownerGroup.appendChild(ownerRow);
-    roster.appendChild(ownerGroup);
-  }
-
-  // LEADERS — 5-col grid
-  if (cores.length) {
-    var coreGroup = document.createElement('div');
-    coreGroup.className = 'roster-group';
-    coreGroup.innerHTML = '<h3 class="group-title">LEADER</h3>';
-    var coreRow = document.createElement('div');
-    coreRow.className = 'roster-row';
-    cores.forEach(function(m) { coreRow.appendChild(makeCard(m, false)); });
-    coreGroup.appendChild(coreRow);
-    roster.appendChild(coreGroup);
-  }
-
-  // MEMBERS — 5-col grid, paginated
-  if (members.length) {
-    var memGroup = document.createElement('div');
-    memGroup.className = 'roster-group';
-    memGroup.innerHTML = '<h3 class="group-title">MEMBERS</h3>';
-    var memRow = document.createElement('div');
-    memRow.className = 'roster-row';
-    var start = (currentPage - 1) * perPage;
-    var pageItems = members.slice(start, start + perPage);
-    pageItems.forEach(function(m) { memRow.appendChild(makeCard(m, false)); });
-    memGroup.appendChild(memRow);
-    roster.appendChild(memGroup);
-    renderPagination(members.length);
-  }
-
-  var pc = document.getElementById('peopleCount');
-  if (pc) pc.textContent = filtered.length + ' MEMBERS';
+  // Grid for leaders and members
+  var g = document.createElement('div');
+  g.className = 'members-row';
+  members.forEach(function(m) {
+    g.appendChild(createMemberCard(m, false));
+  });
+  container.appendChild(g);
 }
 
-function makeCard(m, isOwner) {
+function createMemberCard(m, isOwner) {
   var card = document.createElement('div');
   card.className = isOwner ? 'member-card owner-card' : 'member-card';
-  card.dataset.id = m.id;
+  card.addEventListener('click', function() { openProfile(m); });
 
-  // Square avatar area
-  var avatar = document.createElement('div');
-  avatar.className = 'card-avatar';
-  var imgUrl = getMemberImage(m);
-  if (imgUrl) {
-    avatar.style.backgroundImage = 'url(' + imgUrl + ')';
-    avatar.style.backgroundSize = 'cover';
-    avatar.style.backgroundPosition = 'center';
-  } else {
-    avatar.textContent = getInitials(m.name);
+  var imgDiv = document.createElement('div');
+  imgDiv.className = 'member-avatar';
+  var img = document.createElement('img');
+  img.src = m.image || 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect fill="#222" width="100" height="100"/><text x="50" y="55" text-anchor="middle" fill="#666" font-size="28">' + (m.name ? m.name[0] : '?') + '</text></svg>');
+  img.alt = m.name;
+  imgDiv.appendChild(img);
+  card.appendChild(imgDiv);
+
+  var nameDiv = document.createElement('div');
+  nameDiv.className = 'member-name';
+  nameDiv.textContent = m.name;
+  card.appendChild(nameDiv);
+
+  var badge = document.createElement('div');
+  badge.className = 'member-badge';
+  badge.textContent = m.role === 'owner' ? 'OWNER' : m.role === 'core' ? 'LEADER' : 'MEMBER';
+  card.appendChild(badge);
+
+  if (m.facebook) {
+    var fbWrap = document.createElement('a');
+    fbWrap.className = 'fb-circle';
+    fbWrap.href = 'https://facebook.com/' + m.facebook;
+    fbWrap.target = '_blank';
+    fbWrap.innerHTML = '<span class="fb-f">f</span>';
+    card.appendChild(fbWrap);
   }
 
-  // Badge (positioned inside avatar, top-right)
-  var badge = document.createElement('div');
-  badge.className = 'card-badge';
-  badge.textContent = roleLabel(m.role);
-
-  // Facebook icon — white circle with f, bottom-right of card
-  var fb = document.createElement('a');
-  fb.className = 'card-fb';
-  fb.textContent = 'f';
-  fb.href = m.facebook || '#';
-  fb.target = '_blank';
-
-  // Card body (name below avatar)
-  var body = document.createElement('div');
-  body.className = 'card-body';
-  var name = document.createElement('div');
-  name.className = 'card-name thai-text';
-  name.textContent = m.name;
-  body.appendChild(name);
-
-  avatar.appendChild(badge);
-  avatar.appendChild(fb);
-  card.appendChild(avatar);
-  card.appendChild(body);
-
-  card.addEventListener('click', function(e) {
-    if (e.target === fb) return;
-    openProfile(m);
-  });
   return card;
 }
 
+// ===================== PROFILE DIALOG =====================
 function openProfile(m) {
   var dialog = document.getElementById('profileDialog');
   if (!dialog) return;
-  var imgUrl = getMemberImage(m);
-  var media = document.getElementById('dialogMedia');
-  if (imgUrl) {
-    media.style.backgroundImage = 'url(' + imgUrl + ')';
-    media.style.backgroundSize = 'cover';
-    media.style.backgroundPosition = 'center';
-    media.textContent = '';
-  } else {
-    media.style.backgroundImage = '';
-    media.textContent = getInitials(m.name);
+  dialog.innerHTML = '';
+
+  var inner = document.createElement('div');
+  inner.className = 'profile-inner';
+
+  var closeBtn = document.createElement('button');
+  closeBtn.className = 'profile-close';
+  closeBtn.textContent = '✕';
+  closeBtn.onclick = function() { dialog.close(); };
+  inner.appendChild(closeBtn);
+
+  var img = document.createElement('img');
+  img.src = m.image || '';
+  img.className = 'profile-img';
+  img.alt = m.name;
+  inner.appendChild(img);
+
+  var name = document.createElement('h2');
+  name.className = 'profile-name';
+  name.textContent = m.name;
+  inner.appendChild(name);
+
+  var badge = document.createElement('div');
+  badge.className = 'member-badge';
+  badge.textContent = m.role === 'owner' ? 'OWNER' : m.role === 'core' ? 'LEADER' : 'MEMBER';
+  inner.appendChild(badge);
+
+  if (m.desc) {
+    var desc = document.createElement('p');
+    desc.className = 'profile-desc';
+    desc.textContent = m.desc;
+    inner.appendChild(desc);
   }
-  document.getElementById('dialogRole').textContent = roleLabel(m.role);
-  document.getElementById('dialogName').textContent = m.name;
-  document.getElementById('dialogBlurb').textContent = m.desc || '';
-  var meta = document.getElementById('dialogMeta');
-  meta.innerHTML = '';
+
   if (m.facebook) {
-    meta.innerHTML = '<a href="' + m.facebook + '" target="_blank" class="dialog-link">FACEBOOK</a>';
+    var fbLink = document.createElement('a');
+    fbLink.className = 'profile-fb';
+    fbLink.href = 'https://facebook.com/' + m.facebook;
+    fbLink.target = '_blank';
+    fbLink.textContent = 'Facebook';
+    inner.appendChild(fbLink);
   }
+
+  dialog.appendChild(inner);
   dialog.showModal();
 }
 
+// ===================== SEARCH & FILTER =====================
 document.addEventListener('DOMContentLoaded', function() {
-  var closeBtn = document.getElementById('dialogClose');
-  if (closeBtn) {
-    closeBtn.addEventListener('click', function() {
-      var d = document.getElementById('profileDialog');
-      if (d && d.open) d.close();
-    });
-  }
+  loadMembers(function() {
+    renderMembers();
+  });
 
   var searchInput = document.getElementById('searchInput');
   if (searchInput) {
-    searchInput.addEventListener('input', function() {
-      searchQuery = this.value;
-      currentPage = 1;
-      renderRoster();
-    });
+    searchInput.addEventListener('input', renderMembers);
   }
 
   document.querySelectorAll('.filter-btn').forEach(function(btn) {
     btn.addEventListener('click', function() {
-      document.querySelectorAll('.filter-btn').forEach(function(b){ b.classList.remove('is-active'); });
-      this.classList.add('is-active');
       currentFilter = this.dataset.filter;
-      currentPage = 1;
-      renderRoster();
+      document.querySelectorAll('.filter-btn').forEach(function(b) { b.classList.remove('active'); });
+      this.classList.add('active');
+      renderMembers();
     });
   });
 
-  loadMembers();
-});
-
-function renderPagination(total) {
-  var pag = document.getElementById('pagination');
-  if (!pag) return;
-  pag.innerHTML = '';
-  var pages = Math.ceil(total / perPage);
-  if (pages <= 1) return;
-  for (var i = 1; i <= pages; i++) {
-    var btn = document.createElement('button');
-    btn.className = 'page-btn' + (i === currentPage ? ' is-active' : '');
-    btn.textContent = i;
-    btn.dataset.page = i;
-    btn.addEventListener('click', function() {
-      currentPage = parseInt(this.dataset.page);
-      renderRoster();
-      window.scrollTo({ top: 200, behavior: 'smooth' });
+  // Close dialog on backdrop click
+  var dialog = document.getElementById('profileDialog');
+  if (dialog) {
+    dialog.addEventListener('click', function(e) {
+      if (e.target === dialog) dialog.close();
     });
-    pag.appendChild(btn);
   }
-}
+});

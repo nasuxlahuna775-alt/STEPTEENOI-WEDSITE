@@ -1,6 +1,7 @@
 /**
  * site-config.js — All editable text content for the site
- * Stored in localStorage; admin panel can modify everything
+ * Primary: Firebase Realtime Database (shared across all users)
+ * Fallback: localStorage (local only, used when Firebase not configured)
  */
 var SITE_CONFIG_DEFAULT = {
   home: {
@@ -19,26 +20,73 @@ var SITE_CONFIG_DEFAULT = {
   },
   partners: [],
   music: {
-    title: 'NOW PLAYING'
+    title: 'NOW PLAYING',
+    url: 'https://cdn.pixabay.com/audio/2022/02/22/audio_d1718ab41b.mp3'
   }
 };
 
-function loadSiteConfig() {
-  try {
-    var stored = localStorage.getItem('steenoiconfig');
-    if (stored) {
-      var parsed = JSON.parse(stored);
-      // merge with defaults so new keys are always present
-      return deepMerge(JSON.parse(JSON.stringify(SITE_CONFIG_DEFAULT)), parsed);
+/* -------- Firebase helpers -------- */
+function fbRef(path) {
+  if (typeof firebase === 'undefined' || !firebase.apps || !firebase.apps.length || !firebase.database) return null;
+  try { return firebase.database().ref(path); } catch(e) { return null; }
+}
+
+function fbGet(path, callback) {
+  var ref = fbRef(path);
+  if (!ref) { callback(null); return; }
+  ref.once('value', function(snap) { callback(snap.val()); }, function() { callback(null); });
+}
+
+function fbSet(path, data) {
+  var ref = fbRef(path);
+  if (!ref) return;
+  try { ref.set(data); } catch(e) {}
+}
+
+/* -------- Load config -------- */
+var _siteConfigCache = null;
+
+function loadSiteConfig(callback) {
+  // Try Firebase first
+  fbGet('siteConfig', function(data) {
+    if (data && typeof data === 'object') {
+      _siteConfigCache = deepMerge(JSON.parse(JSON.stringify(SITE_CONFIG_DEFAULT)), data);
+      if (callback) callback(_siteConfigCache);
+      return;
     }
-  } catch(e) {}
-  return JSON.parse(JSON.stringify(SITE_CONFIG_DEFAULT));
+    // Fallback: localStorage
+    try {
+      var stored = localStorage.getItem('steenoiconfig');
+      if (stored) {
+        _siteConfigCache = deepMerge(JSON.parse(JSON.stringify(SITE_CONFIG_DEFAULT)), JSON.parse(stored));
+        if (callback) callback(_siteConfigCache);
+        return;
+      }
+    } catch(e) {}
+    // Final fallback: defaults
+    _siteConfigCache = JSON.parse(JSON.stringify(SITE_CONFIG_DEFAULT));
+    if (callback) callback(_siteConfigCache);
+  });
+
+  // If Firebase not ready, return from localStorage/defaults synchronously
+  if (!FIREBASE_READY) {
+    try {
+      var stored = localStorage.getItem('steenoiconfig');
+      if (stored) {
+        _siteConfigCache = deepMerge(JSON.parse(JSON.stringify(SITE_CONFIG_DEFAULT)), JSON.parse(stored));
+      }
+    } catch(e) {}
+    if (!_siteConfigCache) _siteConfigCache = JSON.parse(JSON.stringify(SITE_CONFIG_DEFAULT));
+    return _siteConfigCache;
+  }
 }
 
 function saveSiteConfig(cfg) {
-  try {
-    localStorage.setItem('steenoiconfig', JSON.stringify(cfg));
-  } catch(e) {}
+  _siteConfigCache = cfg;
+  // Save to Firebase
+  fbSet('siteConfig', cfg);
+  // Also save to localStorage as backup
+  try { localStorage.setItem('steenoiconfig', JSON.stringify(cfg)); } catch(e) {}
 }
 
 function deepMerge(target, source) {
@@ -55,8 +103,15 @@ function deepMerge(target, source) {
 
 // Apply config to current page DOM
 function applySiteConfig() {
-  var cfg = loadSiteConfig();
+  loadSiteConfig(function(cfg) {
+    applyConfigToDOM(cfg);
+  });
+  // Also apply synchronously from cache if available
+  if (_siteConfigCache) applyConfigToDOM(_siteConfigCache);
+}
 
+function applyConfigToDOM(cfg) {
+  if (!cfg) return;
   // HOME page
   var homeTitle = document.querySelector('.home-hero h1');
   if (homeTitle) homeTitle.textContent = cfg.home.title;
@@ -112,4 +167,9 @@ function applySiteConfig() {
 // Run on load
 document.addEventListener('DOMContentLoaded', function() {
   applySiteConfig();
+  // Re-apply when Firebase loads (delayed)
+  if (FIREBASE_READY) {
+    setTimeout(function() { applySiteConfig(); }, 2000);
+    setTimeout(function() { applySiteConfig(); }, 5000);
+  }
 });
