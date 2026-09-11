@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>STEPTEENOI — Admin</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;600;700;800;900&family=Rajdhani:wght@400;500;600;700&family=Noto+Sans+Thai:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body class="admin-page">
+
+<div class="grain"></div>
+
+<header class="topbar">
+  <a class="wordmark" href="index.html">
+    <div class="brand-mark">S</div>
+    <div class="brand-name">STEPTEENOI</div>
+  </a>
+  <nav class="topnav">
+    <a href="index.html">HOME</a>
+    <a href="members.html">MEMBERS</a>
+    <a href="admin.html" class="active">ADMIN</a>
+  </nav>
+</header>
+
+<!-- PASSWORD GATE -->
+<div class="admin-gate" id="adminGate">
+  <div class="gate-icon">🔒</div>
+  <div class="gate-title">ADMIN ACCESS</div>
+  <input type="password" class="gate-input" id="gateInput" placeholder="ใส่รหัสผ่าน...">
+  <button class="gate-btn" id="gateBtn">เข้าสู่ระบบ</button>
+  <div class="gate-error" id="gateError">รหัสผ่านไม่ถูกต้อง</div>
+</div>
+
+<!-- ADMIN PANEL -->
+<div class="admin-panel" id="adminPanel">
+
+  <div class="admin-tabs">
+    <button class="admin-tab is-active" data-tab="tabMembers">👥 จัดการสมาชิก</button>
+    <button class="admin-tab" data-tab="tabContent">✏️ แก้ไขข้อความ</button>
+    <button class="admin-tab" data-tab="tabPartners">🤝 จัดการ Partners</button>
+  </div>
+
+  <!-- ========== TAB: MEMBERS ========== -->
+  <div class="admin-tab-content" id="tabMembers">
+    <div class="admin-header">MANAGE MEMBERS</div>
+
+    <div class="admin-form" id="adminForm">
+      <input type="hidden" id="editId" value="">
+      <div class="admin-form-row">
+        <label>NAME</label>
+        <input type="text" id="fName" placeholder="ชื่อสมาชิก">
+      </div>
+      <div class="admin-form-row">
+        <label>ROLE</label>
+        <select id="fRole">
+          <option value="member">MEMBER</option>
+          <option value="core">LEADER</option>
+          <option value="owner">OWNER</option>
+        </select>
+      </div>
+      <div class="admin-form-row">
+        <label>FACEBOOK URL</label>
+        <input type="text" id="fFb" placeholder="https://facebook.com/...">
+      </div>
+      <div class="admin-form-row">
+        <label>IMAGE URL</label>
+        <input type="text" id="fImg" placeholder="https://... (optional)">
+      </div>
+      <div class="admin-form-row">
+        <label>DESCRIPTION</label>
+        <input type="text" id="fDesc" placeholder="คำอธิบายสั้นๆ">
+      </div>
+      <div class="form-actions">
+        <button class="btn-save" id="saveBtn">บันทึก</button>
+        <button id="cancelBtn">ยกเลิก</button>
+      </div>
+    </div>
+
+    <table class="admin-table">
+      <thead>
+        <tr><th>NAME</th><th>ROLE</th><th>ACTIONS</th></tr>
+      </thead>
+      <tbody id="adminTableBody"></tbody>
+    </table>
+  </div>
+
+  <!-- ========== TAB: SITE CONTENT ========== -->
+  <div class="admin-tab-content" id="tabContent" style="display:none">
+    <div class="admin-header">แก้ไขข้อความทั้งเว็บ</div>
+    <p class="admin-hint">เปลี่ยนข้อความทั้งหมดในเว็บได้ที่นี่ กดบันทึกแล้วรีเฟรชหน้าเว็บเพื่อดูผล</p>
+
+    <div class="admin-form">
+      <div id="siteEditorFields"></div>
+      <div class="form-actions">
+        <button class="btn-save" id="siteSaveBtn">💾 บันทึกข้อความ</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== TAB: PARTNERS ========== -->
+  <div class="admin-tab-content" id="tabPartners" style="display:none">
+    <div class="admin-header">จัดการ PARTNERS / ALLIANCE</div>
+    <p class="admin-hint">เพิ่ม-ลบ-แก้ไขกล่อง Alliance ในหน้าแรก</p>
+
+    <div class="admin-form">
+      <div id="partnersEditorList"></div>
+      <div class="form-actions">
+        <button id="addPartnerBtn">+ เพิ่ม Alliance</button>
+        <button class="btn-save" id="partnersSaveBtn" onclick="saveAllSiteContent()">💾 บันทึก Partners</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="music-player" id="musicPlayer">
+  <button class="music-btn" id="musicBtn">▶</button>
+  <span class="music-title-text">NOW PLAYING</span>
+  <div class="music-progress"><div class="music-progress-fill" id="musicProgress"></div></div>
+</div>
+
+<script src="firebase-config.js"></script>
+<script src="member-images.js"></script>
+<script src="members.js"></script>
+<script src="site-config.js"></script>
+<script src="admin.js"></script>
+<script src="music-player.js"></script>
+<script src="site.js"></script>
+
+<script>
+document.querySelectorAll('.admin-tab').forEach(function(tab) {
+  tab.addEventListener('click', function() {
+    document.querySelectorAll('.admin-tab').forEach(function(t){ t.classList.remove('is-active'); });
+    document.querySelectorAll('.admin-tab-content').forEach(function(c){ c.style.display='none'; });
+    this.classList.add('is-active');
+    document.getElementById(this.dataset.tab).style.display='block';
+  });
+});
+</script>
+</body>
+</html>

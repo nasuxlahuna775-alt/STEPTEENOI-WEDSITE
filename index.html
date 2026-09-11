@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>STEPTEENOI — Home</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;600;700;800;900&family=Rajdhani:wght@400;500;600;700&family=Noto+Sans+Thai:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body class="home-page">
+
+<!-- LIGHTNING BG -->
+<div class="lightning-bg"></div>
+
+<!-- GRAIN -->
+<div class="grain"></div>
+
+<!-- HOME HERO -->
+<div class="home-hero">
+  <h1>HOUSE OF STEPTEENOI</h1>
+  <p class="subtitle">BORN OF LEGEND</p>
+  <div class="divider"></div>
+
+  <!-- STT LOGO -->
+  <div class="logo-mark">
+    <svg viewBox="0 0 120 60" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="chrome" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" style="stop-color:#d1d1d1"/>
+          <stop offset="50%" style="stop-color:#888888"/>
+          <stop offset="100%" style="stop-color:#444444"/>
+        </linearGradient>
+      </defs>
+      <text x="60" y="42" text-anchor="middle" font-family="Orbitron,sans-serif" font-weight="900" font-size="38" fill="url(#chrome)" letter-spacing="6">STT</text>
+    </svg>
+  </div>
+  <p class="logo-text">STEPTEENOI</p>
+
+  <a href="members.html" class="home-btn">
+    ดูรายละเอียด
+    <svg viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+  </a>
+</div>
+
+<!-- PARTNERS -->
+<section class="partners-section">
+  <p class="partners-label">PARTNERS</p>
+  <div class="partners-grid" id="partnersGrid">
+    <!-- Populated dynamically by site-config.js -->
+  </div>
+</section>
+
+<!-- MUSIC PLAYER (bottom right) -->
+<div class="music-player" id="musicPlayer">
+  <button class="music-btn" id="musicBtn">▶</button>
+  <span class="music-title-text">NOW PLAYING</span>
+  <div class="music-progress"><div class="music-progress-fill" id="musicProgress"></div></div>
+</div>
+
+<script src="site-config.js"></script>
+<script src="music-player.js"></script>
+<script src="site.js"></script>
+</body>
+</html>
