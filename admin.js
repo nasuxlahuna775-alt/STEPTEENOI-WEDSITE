@@ -312,10 +312,24 @@ function testMusic() {
     showToast('error', 'ทดสอบไม่ได้', 'กรุณาใส่ลิงก์เพลงก่อน');
     return;
   }
+  // Validate URL format
+  try {
+    new URL(url);
+  } catch(e) {
+    showToast('error', 'ลิงก์ไม่ถูกต้อง', 'กรุณาใส่ URL ให้ครบ เช่น https://example.com/song.mp3');
+    return;
+  }
   if (typeof setMusicUrl === 'function') {
     setMusicUrl(url);
-    showToast('info', 'กำลังเล่นเพลง', 'ทดสอบเพลงที่ใส่ กด ▶ เพื่อเล่น');
+  showToast('info', 'กำลังโหลดเพลง', 'กดปุ่ม ▶ ที่มุมล่างขวาเพื่อเล่น', 'ลิงก์: ' + url);
   }
+  // Also auto-play after short delay
+  setTimeout(function() {
+    if (_musicAudio && !_musicPlaying) {
+      var btn = document.getElementById('musicBtn');
+      if (btn) btn.click();
+    }
+  }, 1500);
 }
 
 // ===================== ACTION LOG =====================

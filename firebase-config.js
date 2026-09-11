@@ -13,13 +13,13 @@
 
 // ========== PASTE YOUR FIREBASE CONFIG HERE ==========
 var firebaseConfig = {
-  apiKey: "AIzaSy...",
-  authDomain: "stepteenoi.firebaseapp.com",
-  databaseURL: "https://stepteenoi-default-rtdb.firebaseio.com",
-  projectId: "stepteenoi",
-  storageBucket: "stepteenoi.appspot.com",
-  messagingSenderId: "123456",
-  appId: "1:123:web:abc"
+  apiKey: "",
+  authDomain: "",
+  databaseURL: "",
+  projectId: "",
+  storageBucket: "",
+  messagingSenderId: "",
+  appId: ""
 };
 // ====================================================
 

@@ -265,6 +265,22 @@ a:hover { color: var(--fg); }
   white-space: nowrap;
 }
 
+.music-status {
+  font-family: 'Rajdhani',sans-serif;
+  font-size: 0.5rem;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+  white-space: nowrap;
+  transition: opacity 0.5s;
+  max-width: 110px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.music-status-playing { color: #4ade80; }
+.music-status-ready { color: var(--silver); }
+.music-status-loading { color: #fbbf24; }
+.music-status-error { color: #f87171; }
+
 .music-progress {
   width: 60px;
   height: 3px;
