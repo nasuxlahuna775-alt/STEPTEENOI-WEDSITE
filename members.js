@@ -5,6 +5,19 @@
 var allMembers = [];
 var currentFilter = 'all';
 
+// Build correct Facebook URL from any input format
+// Handles: 'https://facebook.com/xxx', 'facebook.com/xxx', 'www.facebook.com/xxx', 'xxx'
+function buildFbUrl(val) {
+  if (!val) return '';
+  val = val.trim();
+  // Already a full URL — use as-is
+  if (/^https?:\/\//i.test(val)) return val;
+  // Starts with www. or facebook.com
+  if (/^(www\.)?facebook\.com/i.test(val)) return 'https://' + val;
+  // Just a username — prepend facebook.com
+  return 'https://www.facebook.com/' + val;
+}
+
 function loadMembers(callback) {
   fbGet('members', function(data) {
     if (data && typeof data === 'object') {
@@ -113,11 +126,11 @@ function createMemberCard(m, isOwner) {
   badge.textContent = m.role === 'owner' ? 'OWNER' : m.role === 'core' ? 'LEADER' : 'MEMBER';
   avatarDiv.appendChild(badge);
 
-  // Facebook icon — blue circle with 'f' at bottom-right
+  // Facebook icon — blue circle with FB logo at bottom-right
   if (m.facebook) {
     var fbWrap = document.createElement('a');
     fbWrap.className = 'card-fb';
-    fbWrap.href = 'https://facebook.com/' + m.facebook;
+    fbWrap.href = buildFbUrl(m.facebook);
     fbWrap.target = '_blank';
     fbWrap.setAttribute('aria-label', 'Facebook');
     fbWrap.innerHTML = '<svg viewBox="0 0 24 24" width="18" height="18" fill="white"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>';
@@ -194,7 +207,7 @@ function openProfile(m) {
     var meta = document.createElement('div');
     meta.className = 'dialog-meta';
     var fbLink = document.createElement('a');
-    fbLink.href = 'https://facebook.com/' + m.facebook;
+    fbLink.href = buildFbUrl(m.facebook);
     fbLink.target = '_blank';
     fbLink.innerHTML = '<svg viewBox="0 0 24 24" width="16" height="16" fill="white" style="vertical-align:middle;"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg> FACEBOOK';
     meta.appendChild(fbLink);
