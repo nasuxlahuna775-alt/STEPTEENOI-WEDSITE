@@ -145,6 +145,38 @@ var _defaultMusicUrl = 'https://cdn.pixabay.com/audio/2022/02/22/audio_d1718ab41
     }, 3000);
   }
 
+  // ===== First-interaction auto-play =====
+  // Browsers block autoplay without user gesture, so we listen for
+  // ANY click/tap on the page and try to start music automatically.
+  var _autoStarted = false;
+  function tryAutoStart() {
+    if (_autoStarted || _musicPlaying) return;
+    _autoStarted = true;
+    if (_musicLoaded && !_musicError) {
+      _musicAudio.play().then(function() {
+        btn.textContent = '⏸';
+        _musicPlaying = true;
+        player.classList.add('is-playing');
+        setStatus('playing', 'กำลังเล่น...');
+      }).catch(function() {});
+    } else if (_musicError) {
+      // Retry loading
+      loadAudioUrl(_musicAudio.src || _defaultMusicUrl);
+      setTimeout(function() {
+        if (!_musicPlaying && _musicLoaded) {
+          _musicAudio.play().then(function() {
+            btn.textContent = '⏸';
+            _musicPlaying = true;
+            player.classList.add('is-playing');
+            setStatus('playing', 'กำลังเล่น...');
+          }).catch(function() {});
+        }
+      }, 2000);
+    }
+  }
+  document.addEventListener('click', tryAutoStart, { once: true });
+  document.addEventListener('touchstart', tryAutoStart, { once: true });
+
   // Expose internals for admin
   window._musicLoadAudioUrl = loadAudioUrl;
   window._musicSetTitle = setTitleText;
@@ -173,5 +205,19 @@ function setMusicTitle(title) {
   } else {
     var titleEl = document.querySelector('.music-title-text');
     if (titleEl && title) titleEl.textContent = title;
+  }
+}
+
+// START SITE MUSIC — called from the big button on home page
+function startSiteMusic() {
+  var btn = document.getElementById('musicBtn');
+  var startBtn = document.getElementById('musicStartBtn');
+  if (_musicPlaying) return; // already playing
+  if (btn) btn.click(); // triggers play via the main handler
+  // Hide the start button after click
+  if (startBtn) {
+    startBtn.classList.add('is-playing');
+    startBtn.innerHTML = '<span class="music-start-icon">🎵</span><span class="music-start-text">กำลังเล่น...</span>';
+    setTimeout(function() { startBtn.style.display = 'none'; }, 2000);
   }
 }

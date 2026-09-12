@@ -10,14 +10,14 @@ function loadMembers(callback) {
     if (data && typeof data === 'object') {
       allMembers = Object.values(data);
     } else {
-      allMembers = DEMO_MEMBERS.slice();
+      allMembers = (typeof DEMO_MEMBERS !== 'undefined') ? DEMO_MEMBERS.slice() : [];
     }
     if (callback) callback(allMembers);
   });
 }
 
 function renderMembers() {
-  var grid = document.getElementById('membersGrid');
+  var grid = document.getElementById('roster') || document.getElementById('membersGrid');
   if (!grid) return;
   grid.innerHTML = '';
 
@@ -41,6 +41,10 @@ function renderMembers() {
     groups[m.role].push(m);
   });
 
+  // Update people count
+  var countEl = document.getElementById('peopleCount');
+  if (countEl) countEl.textContent = filtered.length + ' MEMBERS';
+
   // Render each group
   if (groups.owner.length) renderGroup(grid, 'OWNER', groups.owner, true);
   if (groups.core.length) renderGroup(grid, 'LEADER', groups.core, false);
@@ -50,7 +54,7 @@ function renderMembers() {
 function renderGroup(container, title, members, isOwner) {
   // Group title with decorative lines
   var groupDiv = document.createElement('div');
-  groupDiv.className = 'member-group';
+  groupDiv.className = 'roster-group';
   groupDiv.innerHTML = '<div class="group-title"><span>' + title + '</span></div>';
   container.appendChild(groupDiv);
 
@@ -58,7 +62,7 @@ function renderGroup(container, title, members, isOwner) {
   if (isOwner && members.length === 1) {
     var ownerCard = createMemberCard(members[0], true);
     var ownerWrap = document.createElement('div');
-    ownerWrap.className = 'owner-center';
+    ownerWrap.className = 'owner-row';
     ownerWrap.appendChild(ownerCard);
     container.appendChild(ownerWrap);
     return;
@@ -66,7 +70,7 @@ function renderGroup(container, title, members, isOwner) {
 
   // Grid for leaders and members
   var g = document.createElement('div');
-  g.className = 'members-row';
+  g.className = 'roster-row';
   members.forEach(function(m) {
     g.appendChild(createMemberCard(m, false));
   });
@@ -78,32 +82,41 @@ function createMemberCard(m, isOwner) {
   card.className = isOwner ? 'member-card owner-card' : 'member-card';
   card.addEventListener('click', function() { openProfile(m); });
 
-  var imgDiv = document.createElement('div');
-  imgDiv.className = 'member-avatar';
+  // Avatar area with badge and fb icon positioned inside
+  var avatarDiv = document.createElement('div');
+  avatarDiv.className = 'card-avatar';
   var img = document.createElement('img');
   img.src = m.image || 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect fill="#222" width="100" height="100"/><text x="50" y="55" text-anchor="middle" fill="#666" font-size="28">' + (m.name ? m.name[0] : '?') + '</text></svg>');
   img.alt = m.name;
-  imgDiv.appendChild(img);
-  card.appendChild(imgDiv);
+  img.style.cssText = 'width:100%;height:100%;object-fit:cover;';
+  avatarDiv.appendChild(img);
 
-  var nameDiv = document.createElement('div');
-  nameDiv.className = 'member-name';
-  nameDiv.textContent = m.name;
-  card.appendChild(nameDiv);
-
+  // Badge — dark grey, white text, top-right
   var badge = document.createElement('div');
-  badge.className = 'member-badge';
+  badge.className = 'card-badge';
   badge.textContent = m.role === 'owner' ? 'OWNER' : m.role === 'core' ? 'LEADER' : 'MEMBER';
-  card.appendChild(badge);
+  avatarDiv.appendChild(badge);
 
+  // Facebook white circle icon — bottom-right
   if (m.facebook) {
     var fbWrap = document.createElement('a');
-    fbWrap.className = 'fb-circle';
+    fbWrap.className = 'card-fb';
     fbWrap.href = 'https://facebook.com/' + m.facebook;
     fbWrap.target = '_blank';
-    fbWrap.innerHTML = '<span class="fb-f">f</span>';
-    card.appendChild(fbWrap);
+    fbWrap.textContent = 'f';
+    avatarDiv.appendChild(fbWrap);
   }
+
+  card.appendChild(avatarDiv);
+
+  // Card body with name
+  var bodyDiv = document.createElement('div');
+  bodyDiv.className = 'card-body';
+  var nameDiv = document.createElement('div');
+  nameDiv.className = 'card-name';
+  nameDiv.textContent = m.name;
+  bodyDiv.appendChild(nameDiv);
+  card.appendChild(bodyDiv);
 
   return card;
 }
@@ -115,44 +128,54 @@ function openProfile(m) {
   dialog.innerHTML = '';
 
   var inner = document.createElement('div');
-  inner.className = 'profile-inner';
+  inner.className = 'dialog-body';
 
   var closeBtn = document.createElement('button');
-  closeBtn.className = 'profile-close';
+  closeBtn.className = 'dialog-close';
   closeBtn.textContent = '✕';
   closeBtn.onclick = function() { dialog.close(); };
   inner.appendChild(closeBtn);
 
+  // Media area with image
+  var media = document.createElement('div');
+  media.className = 'dialog-media';
   var img = document.createElement('img');
   img.src = m.image || '';
-  img.className = 'profile-img';
   img.alt = m.name;
-  inner.appendChild(img);
+  img.style.cssText = 'width:100%;height:100%;object-fit:cover;border-radius:8px;';
+  if (m.image) {
+    media.appendChild(img);
+  } else {
+    media.textContent = m.name ? m.name[0] : '?';
+  }
+  inner.appendChild(media);
 
-  var name = document.createElement('h2');
-  name.className = 'profile-name';
+  var roleDiv = document.createElement('div');
+  roleDiv.className = 'dialog-role';
+  roleDiv.textContent = m.role === 'owner' ? 'OWNER' : m.role === 'core' ? 'LEADER' : 'MEMBER';
+  inner.appendChild(roleDiv);
+
+  var name = document.createElement('div');
+  name.className = 'dialog-name thai-text';
   name.textContent = m.name;
   inner.appendChild(name);
 
-  var badge = document.createElement('div');
-  badge.className = 'member-badge';
-  badge.textContent = m.role === 'owner' ? 'OWNER' : m.role === 'core' ? 'LEADER' : 'MEMBER';
-  inner.appendChild(badge);
-
   if (m.desc) {
     var desc = document.createElement('p');
-    desc.className = 'profile-desc';
+    desc.className = 'dialog-blurb thai-text';
     desc.textContent = m.desc;
     inner.appendChild(desc);
   }
 
   if (m.facebook) {
+    var meta = document.createElement('div');
+    meta.className = 'dialog-meta';
     var fbLink = document.createElement('a');
-    fbLink.className = 'profile-fb';
     fbLink.href = 'https://facebook.com/' + m.facebook;
     fbLink.target = '_blank';
-    fbLink.textContent = 'Facebook';
-    inner.appendChild(fbLink);
+    fbLink.textContent = 'FACEBOOK';
+    meta.appendChild(fbLink);
+    inner.appendChild(meta);
   }
 
   dialog.appendChild(inner);
@@ -173,8 +196,8 @@ document.addEventListener('DOMContentLoaded', function() {
   document.querySelectorAll('.filter-btn').forEach(function(btn) {
     btn.addEventListener('click', function() {
       currentFilter = this.dataset.filter;
-      document.querySelectorAll('.filter-btn').forEach(function(b) { b.classList.remove('active'); });
-      this.classList.add('active');
+      document.querySelectorAll('.filter-btn').forEach(function(b) { b.classList.remove('is-active'); });
+      this.classList.add('is-active');
       renderMembers();
     });
   });

@@ -69,7 +69,7 @@ function loadSiteConfig(callback) {
   });
 
   // If Firebase not ready, return from localStorage/defaults synchronously
-  if (!FIREBASE_READY) {
+  if (typeof FIREBASE_READY === 'undefined' || !FIREBASE_READY) {
     try {
       var stored = localStorage.getItem('steenoiconfig');
       if (stored) {
@@ -84,9 +84,27 @@ function loadSiteConfig(callback) {
 function saveSiteConfig(cfg) {
   _siteConfigCache = cfg;
   // Save to Firebase
-  fbSet('siteConfig', cfg);
+  var ref = fbRef('siteConfig');
+  if (ref) {
+    try {
+      ref.set(cfg).then(function() {
+        console.log('[Config] Saved to Firebase OK');
+      }).catch(function(err) {
+        console.warn('[Config] Firebase save failed:', err);
+      });
+    } catch(e) {
+      console.warn('[Config] Firebase set error:', e);
+    }
+  } else {
+    console.log('[Config] Firebase not available — saving to localStorage only');
+  }
   // Also save to localStorage as backup
-  try { localStorage.setItem('steenoiconfig', JSON.stringify(cfg)); } catch(e) {}
+  try {
+    localStorage.setItem('steenoiconfig', JSON.stringify(cfg));
+    console.log('[Config] Saved to localStorage OK');
+  } catch(e) {
+    console.warn('[Config] localStorage save failed (maybe full):', e);
+  }
 }
 
 function deepMerge(target, source) {
@@ -168,7 +186,7 @@ function applyConfigToDOM(cfg) {
 document.addEventListener('DOMContentLoaded', function() {
   applySiteConfig();
   // Re-apply when Firebase loads (delayed)
-  if (FIREBASE_READY) {
+  if (typeof FIREBASE_READY !== 'undefined' && FIREBASE_READY) {
     setTimeout(function() { applySiteConfig(); }, 2000);
     setTimeout(function() { applySiteConfig(); }, 5000);
   }

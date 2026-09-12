@@ -26,7 +26,7 @@ var firebaseConfig = {
 // Check if config is filled
 var FIREBASE_READY = false;
 try {
-  FIREBASE_READY = firebaseConfig.apiKey && firebaseConfig.apiKey.length > 5
+  FIREBASE_READY = typeof firebaseConfig !== 'undefined' && firebaseConfig.apiKey && firebaseConfig.apiKey.length > 5
     && firebaseConfig.databaseURL && firebaseConfig.databaseURL.length > 5;
 } catch(e) {}
 
