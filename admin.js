@@ -1,12 +1,13 @@
 /**
- * admin.js — Full site content management + member CRUD
+ * admin.js v15 — Full site content management + member CRUD
+ * v15: REMOVED all music player code (music tab, saveMusic, testMusic, loadMusicAdmin)
  * Saves to Firebase (primary) + localStorage (backup)
  * Uses beautiful toast notifications
  */
 var ADMIN_PASS = 'STEENOI2026';
 var adminMembers = [];
 var siteConfig = null;
-var _actionLog = []; // track all actions for display
+var _actionLog = [];
 
 // ===================== PASSWORD GATE =====================
 function unlockAdmin() {
@@ -14,7 +15,6 @@ function unlockAdmin() {
   document.getElementById('adminPanel').style.display = 'block';
   loadAdminMembers();
   loadSiteConfigAdmin();
-  loadMusicAdmin();
 }
 
 // ===================== MEMBER CRUD =====================
@@ -37,7 +37,6 @@ function renderAdminTable() {
   tbody.innerHTML = '';
   adminMembers.forEach(function(m) {
     var tr = document.createElement('tr');
-    // Avatar thumbnail
     var imgCell = '<td class="td-avatar">';
     if (m.image) {
       imgCell += '<img src="' + escHtml(m.image) + '" class="admin-thumb" onerror="this.style.display=\'none\'">';
@@ -85,7 +84,6 @@ function editMember(id) {
 function deleteMember(id) {
   var m = adminMembers.find(function(x){ return x.id === id; });
   if (!m) return;
-  // Show confirmation toast instead of confirm()
   showConfirmToast(
     'ยืนยันการลบ',
     'ต้องการลบสมาชิก "' + m.name + '" หรือไม่?',
@@ -195,8 +193,7 @@ function renderSiteEditor() {
     { key: 'members.heroSub', label: 'คำบรรยายสมาชิก', val: siteConfig.members.heroSub },
     { key: 'members.searchPlaceholder', label: 'Placeholder ค้นหา', val: siteConfig.members.searchPlaceholder },
     { key: 'members.filterAll', label: 'ข้อความปุ่ม ทั้งหมด', val: siteConfig.members.filterAll },
-    { key: 'members.footer', label: 'ข้อความ Footer', val: siteConfig.members.footer },
-    { key: 'music.title', label: 'ข้อความเพลง (หน้าเว็บ)', val: siteConfig.music.title },
+    { key: 'members.footer', label: 'ข้อความ Footer', val: siteConfig.members.footer }
   ];
 
   var container = document.getElementById('siteEditorFields');
@@ -259,7 +256,6 @@ function saveAllSiteContent() {
     }
     var oldVal = obj[keys[keys.length - 1]];
     obj[keys[keys.length - 1]] = input.value;
-    // Track changes
     var label = input.closest('.admin-form-row').querySelector('label');
     if (label && oldVal !== input.value) {
       changes.push(label.textContent + ': "' + input.value + '"');
@@ -281,97 +277,6 @@ function saveAllSiteContent() {
   showToast('success', 'บันทึกข้อความเรียบร้อย', 'บันทึงเข้า Firebase + localStorage แล้ว', detail);
 }
 
-// ===================== MUSIC ADMIN =====================
-function loadMusicAdmin() {
-  function fillMusicFields(cfg) {
-    var urlInput = document.getElementById('fMusicUrl');
-    var titleInput = document.getElementById('fMusicTitle');
-    if (urlInput && cfg.music && cfg.music.url) urlInput.value = cfg.music.url;
-    if (titleInput && cfg.music && cfg.music.title) titleInput.value = cfg.music.title;
-  }
-  // Use cached config if available
-  if (siteConfig) {
-    fillMusicFields(siteConfig);
-  }
-  // Also load fresh from config system
-  loadSiteConfig(function(cfg) {
-    siteConfig = cfg;
-    fillMusicFields(cfg);
-  });
-}
-
-function saveMusic() {
-  var url = document.getElementById('fMusicUrl').value.trim();
-  var title = document.getElementById('fMusicTitle').value.trim();
-  console.log('[Admin] saveMusic called — URL:', url, 'Title:', title);
-  // Make sure siteConfig exists — create from defaults if needed
-  if (!siteConfig) {
-    console.log('[Admin] siteConfig was null — creating from defaults');
-    siteConfig = JSON.parse(JSON.stringify(SITE_CONFIG_DEFAULT));
-  }
-  if (!siteConfig.music) siteConfig.music = {};
-  siteConfig.music.url = url;
-  siteConfig.music.title = title;
-  saveSiteConfig(siteConfig);
-  if (typeof setMusicUrl === 'function') setMusicUrl(url);
-  if (typeof setMusicTitle === 'function') setMusicTitle(title);
-  var detail = 'URL: ' + (url || '(ว่าง)') + '\nชื่อเพลง: ' + (title || '(ว่าง)');
-  logAction('🎵 แก้ไขเพลง', detail);
-  showToast('success', 'บันทึกเพลงเรียบร้อย', 'เพลงถูกอัปเดตแล้ว', detail);
-  console.log('[Admin] saveMusic complete — siteConfig.music:', siteConfig.music);
-}
-
-function testMusic() {
-  var url = document.getElementById('fMusicUrl').value.trim();
-  if (!url) {
-    showToast('error', 'ทดสอบไม่ได้', 'กรุณาใส่ลิงก์เพลงก่อน');
-    return;
-  }
-  // Validate URL format
-  try {
-    new URL(url);
-  } catch(e) {
-    showToast('error', 'ลิงก์ไม่ถูกต้อง', 'กรุณาใส่ URL ให้ครบ เช่น https://example.com/song.mp3');
-    return;
-  }
-  // Set the music URL (loads the audio)
-  if (typeof setMusicUrl === 'function') {
-    setMusicUrl(url);
-  }
-  showToast('info', 'กำลังโหลดเพลง...', 'รอสักครู่แล้วกด ▶ ที่มุมล่างขวา', 'ลิงก์: ' + url);
-  
-  // Auto-play after the audio has time to load
-  // Try multiple times with increasing delay
-  function tryPlay(attempt) {
-    if (attempt > 5) return; // give up after 5 tries
-    if (_musicPlaying) return; // already playing
-    if (_musicAudio && _musicAudio.readyState >= 2) {
-      // Audio is loaded enough to play
-      _musicAudio.play().then(function() {
-        var btn = document.getElementById('musicBtn');
-        if (btn) btn.textContent = '⏸';
-        _musicPlaying = true;
-        var player = document.getElementById('musicPlayer');
-        if (player) player.classList.add('is-playing');
-        if (typeof window._musicSetStatus === 'function') {
-          window._musicSetStatus('playing', 'กำลังเล่น...');
-        }
-        showToast('success', '🎵 เพลงเล่นแล้ว!', 'ทดสอบเพลงสำเร็จ');
-      }).catch(function(err) {
-        console.warn('[Music] Auto-play blocked on attempt', attempt, err);
-        // Try again after longer delay
-        setTimeout(function() { tryPlay(attempt + 1); }, 1000);
-      });
-    } else {
-      // Not ready yet, wait and try again
-      setTimeout(function() { tryPlay(attempt + 1); }, 800);
-    }
-  }
-  
-  // Start trying to play after a short delay
-  setTimeout(function() { tryPlay(1); }, 1000);
-}
-
 // ===================== ACTION LOG =====================
 function logAction(title, detail) {
   var now = new Date();
@@ -379,7 +284,7 @@ function logAction(title, detail) {
     now.getMinutes().toString().padStart(2,'0') + ':' +
     now.getSeconds().toString().padStart(2,'0');
   _actionLog.unshift({ time: time, title: title, detail: detail });
-  if (_actionLog.length > 50) _actionLog.pop(); // keep max 50
+  if (_actionLog.length > 50) _actionLog.pop();
 }
 
 function getActionLog() {
@@ -413,23 +318,19 @@ function showToast(type, title, message, detail) {
     '<div class="toast-progress" style="width:100%"></div>';
   container.appendChild(el);
 
-  // Close button
   el.querySelector('.toast-close').addEventListener('click', function() {
     removeToast(el);
   });
 
-  // Animate in
   requestAnimationFrame(function() {
     el.classList.add('show');
   });
 
-  // Progress bar animation
   var progress = el.querySelector('.toast-progress');
-  var duration = detail ? 6000 : 4000; // longer if has detail
+  var duration = detail ? 6000 : 4000;
   progress.style.transitionDuration = duration + 'ms';
   setTimeout(function() { progress.style.width = '0%'; }, 50);
 
-  // Auto remove
   setTimeout(function() { removeToast(el); }, duration + 300);
 }
 
@@ -439,7 +340,6 @@ function removeToast(el) {
   setTimeout(function() { if (el.parentNode) el.parentNode.removeChild(el); }, 400);
 }
 
-// Confirm toast with OK/CANCEL
 function showConfirmToast(title, message, onConfirm) {
   var container = getToastContainer();
   var el = document.createElement('div');
@@ -465,7 +365,6 @@ function showConfirmToast(title, message, onConfirm) {
   });
 
   requestAnimationFrame(function() { el.classList.add('show'); });
-  // Don't auto-remove confirm toasts
 }
 
 // ===================== HELPERS =====================
@@ -513,7 +412,6 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   }
 
-  // Backup click handler for image upload button (label for may fail on some devices)
   var imgUploadBtn = document.querySelector('.img-upload-btn');
   if (imgUploadBtn && imgFile) {
     imgUploadBtn.addEventListener('click', function(e) {
@@ -522,7 +420,6 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   }
 
-  // Image URL input: show preview on change
   var fImgInput = document.getElementById('fImg');
   if (fImgInput) {
     fImgInput.addEventListener('input', function() {
@@ -535,11 +432,4 @@ document.addEventListener('DOMContentLoaded', function() {
 
   var addPartnerBtn = document.getElementById('addPartnerBtn');
   if (addPartnerBtn) addPartnerBtn.addEventListener('click', addPartner);
-
-  // Music tab buttons
-  var musicSaveBtn = document.getElementById('musicSaveBtn');
-  if (musicSaveBtn) musicSaveBtn.addEventListener('click', saveMusic);
-
-  var musicTestBtn = document.getElementById('musicTestBtn');
-  if (musicTestBtn) musicTestBtn.addEventListener('click', testMusic);
 });

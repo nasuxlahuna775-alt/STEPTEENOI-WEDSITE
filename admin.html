@@ -41,7 +41,6 @@
     <button class="admin-tab is-active" data-tab="tabMembers">👥 จัดการสมาชิก</button>
     <button class="admin-tab" data-tab="tabContent">✏️ แก้ไขข้อความ</button>
     <button class="admin-tab" data-tab="tabPartners">🤝 จัดการ Partners</button>
-    <button class="admin-tab" data-tab="tabMusic">🎵 จัดการเพลง</button>
   </div>
 
   <!-- ========== TAB: MEMBERS ========== -->
@@ -124,54 +123,13 @@
     </div>
   </div>
 
-  <!-- ========== TAB: MUSIC ========== -->
-  <div class="admin-tab-content" id="tabMusic" style="display:none">
-    <div class="admin-header">🎵 จัดการเพลง</div>
-    <p class="admin-hint">เปลี่ยนเพลงที่เล่นในเว็บได้ที่นี่</p>
-
-    <div class="music-admin-guide" style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:12px 16px;margin-bottom:16px">
-      <div style="font-weight:600;margin-bottom:8px;color:var(--silver)">💡 วิธีใส่เพลงให้ติด:</div>
-      <ol style="margin:0;padding-left:18px;font-size:0.85rem;color:var(--muted);line-height:1.8">
-        <li>ใช้ลิงก์ไฟล์เพลงโดยตรง <b>(.mp3 / .wav / .ogg)</b></li>
-        <li>ตัวอย่างที่ใช้ได้: <span style="color:var(--silver)">https://cdn.pixabay.com/audio/.../file.mp3</span></li>
-        <li><b style="color:#f87171">ห้ามใช้ลิงก์ YouTube / Spotify</b> — จะไม่เล่น!</li>
-        <li>อัปโหลดเพลงได้ที่ <a href="https://file.io" target="_blank" style="color:var(--silver)">file.io</a> หรือ <a href="https://catbox.moe" target="_blank" style="color:var(--silver)">catbox.moe</a></li>
-        <li>กด <b>▶ ทดสอบเพลง</b> เพื่อดูว่าเล่นได้ไหมก่อนบันทึก</li>
-      </ol>
-    </div>
-
-    <div class="admin-form">
-      <div class="admin-form-row">
-        <label>MUSIC URL</label>
-        <input type="text" id="fMusicUrl" placeholder="https://example.com/song.mp3">
-        <span class="admin-hint-inline">รองรับเฉพาะลิงก์ไฟล์เพลงโดยตรง (.mp3 .wav .ogg) — ห้ามลิงก์ YouTube/Spotify</span>
-      </div>
-      <div class="admin-form-row">
-        <label>ชื่อเพลง</label>
-        <input type="text" id="fMusicTitle" placeholder="ชื่อเพลง - ศิลปิน">
-      </div>
-      <div class="form-actions">
-        <button class="btn-save" id="musicSaveBtn">💾 บันทึกเพลง</button>
-        <button id="musicTestBtn">▶ ทดสอบเพลง</button>
-      </div>
-    </div>
-  </div>
-
-</div>
-
-<div class="music-player" id="musicPlayer">
-  <button class="music-btn" id="musicBtn">▶</button>
-  <span class="music-title-text">NOW PLAYING</span>
-  <span class="music-status" id="musicStatus">⏳ กำลังโหลดเพลง...</span>
-  <div class="music-progress"><div class="music-progress-fill" id="musicProgress"></div></div>
 </div>
 
 <script src="firebase-config.js"></script>
+<script src="site-config.js"></script>
 <script src="member-images.js"></script>
 <script src="members.js"></script>
-<script src="site-config.js"></script>
 <script src="admin.js"></script>
-<script src="music-player.js"></script>
 <script src="site.js"></script>
 
 <script>

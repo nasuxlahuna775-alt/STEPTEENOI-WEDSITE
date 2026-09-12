@@ -1,14 +1,7 @@
 /**
- * firebase-config.js — Firebase Realtime Database config
- * 
- * HOW TO SETUP:
- * 1. Go to https://console.firebase.google.com
- * 2. Create a new project (any name)
- * 3. Click "Add app" → Web app (</>) → Register
- * 4. Copy the config values below
- * 5. Go to Build → Realtime Database → Create database
- * 6. Set rules to: { "rules": { ".read": true, ".write": true } }
- * 7. Fill in YOUR config below
+ * firebase-config.js v14 — Firebase Realtime Database config
+ * FIX: Dispatches 'firebase-ready' event so other scripts know
+ *       when Firebase SDK is loaded and initialized.
  */
 
 // ========== YOUR FIREBASE CONFIG ==========
@@ -34,8 +27,8 @@ try {
 // Initialize Firebase if configured
 if (FIREBASE_READY) {
   try {
-    // Load Firebase SDK from CDN if not already loaded
     if (typeof firebase === 'undefined') {
+      // Load Firebase SDK from CDN
       var s1 = document.createElement('script');
       s1.src = 'https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js';
       document.head.appendChild(s1);
@@ -44,14 +37,20 @@ if (FIREBASE_READY) {
       s2.onload = function() {
         firebase.initializeApp(firebaseConfig);
         console.log('[Firebase] Connected!');
-        // Re-apply config from Firebase after connection
-        if (typeof applySiteConfig === 'function') applySiteConfig();
+        // Dispatch event so other scripts know Firebase is ready
+        window.dispatchEvent(new Event('firebase-ready'));
+        // Also call legacy callbacks if they exist
+        if (typeof applySiteConfig === 'function') setTimeout(function() { applySiteConfig(); }, 100);
         if (typeof loadAdminMembers === 'function') loadAdminMembers();
+        if (typeof reloadMembersOnFirebaseReady === 'function') reloadMembersOnFirebaseReady();
       };
       document.head.appendChild(s2);
     } else {
       firebase.initializeApp(firebaseConfig);
       console.log('[Firebase] Connected!');
+      window.dispatchEvent(new Event('firebase-ready'));
+      if (typeof applySiteConfig === 'function') setTimeout(function() { applySiteConfig(); }, 100);
+      if (typeof loadAdminMembers === 'function') loadAdminMembers();
     }
   } catch(e) {
     console.warn('[Firebase] Init failed:', e);

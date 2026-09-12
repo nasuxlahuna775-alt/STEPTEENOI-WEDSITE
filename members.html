@@ -66,21 +66,13 @@
   </div>
 </dialog>
 
-<!-- MUSIC PLAYER (bottom right) -->
-<div class="music-player" id="musicPlayer">
-  <button class="music-btn" id="musicBtn">▶</button>
-  <span class="music-title-text">NOW PLAYING</span>
-  <span class="music-status" id="musicStatus">⏳ กำลังโหลดเพลง...</span>
-  <div class="music-progress"><div class="music-progress-fill" id="musicProgress"></div></div>
-</div>
-
 <footer class="members-footer">&copy; 2026 STEPTEENOI</footer>
 
+<!-- Script load order: firebase → site-config → member-images → members → site effects -->
 <script src="firebase-config.js"></script>
+<script src="site-config.js"></script>
 <script src="member-images.js"></script>
 <script src="members.js"></script>
-<script src="site-config.js"></script>
-<script src="music-player.js"></script>
 <script src="site.js"></script>
 </body>
 </html>

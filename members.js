@@ -1,20 +1,20 @@
 /**
- * members.js — Load & display members
- * Primary: Firebase, Fallback: demo data
+ * members.js v15 — Load & display members
+ * FIX v15: Members display IMMEDIATELY on page load.
+ *   - On DOMContentLoaded, set allMembers = DEMO_MEMBERS and render right away
+ *   - Then call fbGet to try Firebase; if data exists, replace demo data and re-render
+ *   - Listen for 'firebase-ready' to reload from Firebase when SDK finishes loading
+ * FIX: fbGet from site-config.js handles Firebase-not-ready (returns null)
  */
 var allMembers = [];
 var currentFilter = 'all';
 
 // Build correct Facebook URL from any input format
-// Handles: 'https://facebook.com/xxx', 'facebook.com/xxx', 'www.facebook.com/xxx', 'xxx'
 function buildFbUrl(val) {
   if (!val) return '';
   val = val.trim();
-  // Already a full URL — use as-is
   if (/^https?:\/\//i.test(val)) return val;
-  // Starts with www. or facebook.com
   if (/^(www\.)?facebook\.com/i.test(val)) return 'https://' + val;
-  // Just a username — prepend facebook.com
   return 'https://www.facebook.com/' + val;
 }
 
@@ -22,8 +22,10 @@ function loadMembers(callback) {
   fbGet('members', function(data) {
     if (data && typeof data === 'object') {
       allMembers = Object.values(data);
+      console.log('[Members] Loaded from Firebase:', allMembers.length);
     } else {
       allMembers = (typeof DEMO_MEMBERS !== 'undefined') ? DEMO_MEMBERS.slice() : [];
+      console.log('[Members] Firebase empty — using demo data:', allMembers.length);
     }
     if (callback) callback(allMembers);
   });
@@ -41,37 +43,31 @@ function renderMembers() {
     return matchRole && matchSearch;
   });
 
-  // Sort: owner first, then core, then member
   var roleOrder = { owner: 0, core: 1, member: 2 };
   filtered.sort(function(a, b) {
     return (roleOrder[a.role] || 2) - (roleOrder[b.role] || 2);
   });
 
-  // Group by role
   var groups = { owner: [], core: [], member: [] };
   filtered.forEach(function(m) {
     if (!groups[m.role]) groups[m.role] = [];
     groups[m.role].push(m);
   });
 
-  // Update people count
   var countEl = document.getElementById('peopleCount');
   if (countEl) countEl.textContent = filtered.length + ' MEMBERS';
 
-  // Render each group
   if (groups.owner.length) renderGroup(grid, 'OWNER', groups.owner, 'owner');
   if (groups.core.length) renderGroup(grid, 'LEADER', groups.core, 'core');
   if (groups.member.length) renderGroup(grid, 'MEMBERS', groups.member, 'member');
 }
 
 function renderGroup(container, title, members, roleType) {
-  // Group title with decorative lines
   var groupDiv = document.createElement('div');
   groupDiv.className = 'roster-group';
   groupDiv.innerHTML = '<div class="group-title"><span>' + title + '</span></div>';
   container.appendChild(groupDiv);
 
-  // Owner: single centered, LARGER card
   if (roleType === 'owner') {
     var ownerCard = createMemberCard(members[0], true);
     var ownerWrap = document.createElement('div');
@@ -81,7 +77,6 @@ function renderGroup(container, title, members, roleType) {
     return;
   }
 
-  // LEADER: centered row (like owner but normal size cards)
   if (roleType === 'core') {
     var leaderWrap = document.createElement('div');
     leaderWrap.className = 'leader-row';
@@ -92,7 +87,6 @@ function renderGroup(container, title, members, roleType) {
     return;
   }
 
-  // Regular members: 5-col grid
   var g = document.createElement('div');
   g.className = 'roster-row';
   members.forEach(function(m) {
@@ -106,11 +100,10 @@ function createMemberCard(m, isOwner) {
   card.className = isOwner ? 'member-card owner-card' : 'member-card';
   card.addEventListener('click', function() { openProfile(m); });
 
-  // Avatar area with badge and fb icon positioned inside
   var avatarDiv = document.createElement('div');
   avatarDiv.className = 'card-avatar';
   var img = document.createElement('img');
-  img.src = m.image || 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect fill="#222" width="100" height="100"/><text x="50" y="55" text-anchor="middle" fill="#666" font-size="28">' + (m.name ? m.name[0] : '?') + '</text></svg>');
+  img.src = m.image || '';
   img.alt = m.name;
   img.style.cssText = 'width:100%;height:100%;object-fit:cover;';
   // Fallback to inline SVG if image fails to load
@@ -120,13 +113,11 @@ function createMemberCard(m, isOwner) {
   };
   avatarDiv.appendChild(img);
 
-  // Badge — dark grey, white text, top-right
   var badge = document.createElement('div');
   badge.className = 'card-badge';
   badge.textContent = m.role === 'owner' ? 'OWNER' : m.role === 'core' ? 'LEADER' : 'MEMBER';
   avatarDiv.appendChild(badge);
 
-  // Facebook icon — blue circle with FB logo at bottom-right
   if (m.facebook) {
     var fbWrap = document.createElement('a');
     fbWrap.className = 'card-fb';
@@ -139,7 +130,6 @@ function createMemberCard(m, isOwner) {
 
   card.appendChild(avatarDiv);
 
-  // Card body with name
   var bodyDiv = document.createElement('div');
   bodyDiv.className = 'card-body';
   var nameDiv = document.createElement('div');
@@ -166,17 +156,14 @@ function openProfile(m) {
   closeBtn.onclick = function() { dialog.close(); };
   inner.appendChild(closeBtn);
 
-  // Media area with image
   var media = document.createElement('div');
   media.className = 'dialog-media';
   var img = document.createElement('img');
   img.src = m.image || '';
   img.alt = m.name;
   img.style.cssText = 'width:100%;height:100%;object-fit:cover;border-radius:8px;';
-  // Fallback to inline SVG if image fails to load
   img.onerror = function() {
     this.onerror = null;
-    this.style.cssText = 'width:100%;height:100%;object-fit:cover;border-radius:8px;';
     this.src = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200"><rect fill="#1a1a1a" width="200" height="200"/><text x="100" y="112" text-anchor="middle" fill="#d1d1d1" font-family="Orbitron,monospace" font-size="64" font-weight="700">' + (m.name ? m.name[0] : '?') + '</text></svg>');
   };
   if (m.image) {
@@ -218,8 +205,17 @@ function openProfile(m) {
   dialog.showModal();
 }
 
-// ===================== SEARCH & FILTER =====================
+// ===================== INIT =====================
 document.addEventListener('DOMContentLoaded', function() {
+  // ===== FIX v15: Display members IMMEDIATELY on page load =====
+  // Set demo data right away so cards render instantly
+  if (typeof DEMO_MEMBERS !== 'undefined' && DEMO_MEMBERS.length > 0) {
+    allMembers = DEMO_MEMBERS.slice();
+    renderMembers();
+    console.log('[Members] Instant render with demo data:', allMembers.length);
+  }
+
+  // Then try Firebase (async) — if it has real data, it will replace demo
   loadMembers(function() {
     renderMembers();
   });
@@ -238,11 +234,25 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   });
 
-  // Close dialog on backdrop click
   var dialog = document.getElementById('profileDialog');
   if (dialog) {
     dialog.addEventListener('click', function(e) {
       if (e.target === dialog) dialog.close();
     });
   }
+});
+
+// ===== Re-load members when Firebase becomes ready =====
+function reloadMembersOnFirebaseReady() {
+  console.log('[Members] Firebase ready — reloading members...');
+  loadMembers(function() {
+    renderMembers();
+  });
+}
+
+// Listen for the custom 'firebase-ready' event
+window.addEventListener('firebase-ready', function() {
+  setTimeout(function() {
+    reloadMembersOnFirebaseReady();
+  }, 200);
 });

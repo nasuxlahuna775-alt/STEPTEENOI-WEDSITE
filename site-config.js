@@ -1,7 +1,9 @@
 /**
- * site-config.js — All editable text content for the site
- * Primary: Firebase Realtime Database (shared across all users)
- * Fallback: localStorage (local only, used when Firebase not configured)
+ * site-config.js v14 — All editable text content for the site
+ * Primary: Firebase Realtime Database
+ * Fallback: localStorage + defaults
+ * FIX: Listens for 'firebase-ready' event to re-apply config
+ * FIX: fbGet handles Firebase-not-ready gracefully (returns null, uses fallback)
  */
 var SITE_CONFIG_DEFAULT = {
   home: {
@@ -21,7 +23,7 @@ var SITE_CONFIG_DEFAULT = {
   partners: [],
   music: {
     title: 'NOW PLAYING',
-    url: 'https://cdn.pixabay.com/audio/2022/02/22/audio_d1718ab41b.mp3'
+    url: ''
   }
 };
 
@@ -47,7 +49,6 @@ function fbSet(path, data) {
 var _siteConfigCache = null;
 
 function loadSiteConfig(callback) {
-  // Try Firebase first
   fbGet('siteConfig', function(data) {
     if (data && typeof data === 'object') {
       _siteConfigCache = deepMerge(JSON.parse(JSON.stringify(SITE_CONFIG_DEFAULT)), data);
@@ -68,8 +69,8 @@ function loadSiteConfig(callback) {
     if (callback) callback(_siteConfigCache);
   });
 
-  // If Firebase not ready, return from localStorage/defaults synchronously
-  if (typeof FIREBASE_READY === 'undefined' || !FIREBASE_READY) {
+  // Synchronous fallback if Firebase not ready
+  if (!_siteConfigCache) {
     try {
       var stored = localStorage.getItem('steenoiconfig');
       if (stored) {
@@ -77,13 +78,11 @@ function loadSiteConfig(callback) {
       }
     } catch(e) {}
     if (!_siteConfigCache) _siteConfigCache = JSON.parse(JSON.stringify(SITE_CONFIG_DEFAULT));
-    return _siteConfigCache;
   }
 }
 
 function saveSiteConfig(cfg) {
   _siteConfigCache = cfg;
-  // Save to Firebase
   var ref = fbRef('siteConfig');
   if (ref) {
     try {
@@ -95,16 +94,11 @@ function saveSiteConfig(cfg) {
     } catch(e) {
       console.warn('[Config] Firebase set error:', e);
     }
-  } else {
-    console.log('[Config] Firebase not available — saving to localStorage only');
   }
-  // Also save to localStorage as backup
   try {
     localStorage.setItem('steenoiconfig', JSON.stringify(cfg));
     console.log('[Config] Saved to localStorage OK');
-  } catch(e) {
-    console.warn('[Config] localStorage save failed (maybe full):', e);
-  }
+  } catch(e) {}
 }
 
 function deepMerge(target, source) {
@@ -124,13 +118,11 @@ function applySiteConfig() {
   loadSiteConfig(function(cfg) {
     applyConfigToDOM(cfg);
   });
-  // Also apply synchronously from cache if available
   if (_siteConfigCache) applyConfigToDOM(_siteConfigCache);
 }
 
 function applyConfigToDOM(cfg) {
   if (!cfg) return;
-  // HOME page
   var homeTitle = document.querySelector('.home-hero h1');
   if (homeTitle) homeTitle.textContent = cfg.home.title;
   var homeSub = document.querySelector('.home-hero .subtitle');
@@ -145,7 +137,6 @@ function applyConfigToDOM(cfg) {
   var partnersLabel = document.querySelector('.partners-label');
   if (partnersLabel) partnersLabel.textContent = cfg.home.partnersLabel;
 
-  // PARTNERS — dynamic
   var partnersGrid = document.querySelector('.partners-grid');
   if (partnersGrid) {
     partnersGrid.innerHTML = '';
@@ -165,7 +156,6 @@ function applyConfigToDOM(cfg) {
     });
   }
 
-  // MEMBERS page
   var memHeroTitle = document.querySelector('.hero-title-members');
   if (memHeroTitle) memHeroTitle.textContent = cfg.members.heroTitle;
   var memHeroSub = document.querySelector('.hero-sub-members');
@@ -177,17 +167,15 @@ function applyConfigToDOM(cfg) {
   var memFooter = document.querySelector('.members-footer');
   if (memFooter) memFooter.textContent = cfg.members.footer;
 
-  // MUSIC
-  var musicTitle = document.querySelector('.music-title-text');
-  if (musicTitle) musicTitle.textContent = cfg.music.title;
+  // Music player removed — no music DOM updates needed
 }
 
-// Run on load
+// Run on DOMContentLoaded
 document.addEventListener('DOMContentLoaded', function() {
   applySiteConfig();
-  // Re-apply when Firebase loads (delayed)
-  if (typeof FIREBASE_READY !== 'undefined' && FIREBASE_READY) {
-    setTimeout(function() { applySiteConfig(); }, 2000);
-    setTimeout(function() { applySiteConfig(); }, 5000);
-  }
+});
+
+// FIX: Re-apply config when Firebase becomes ready
+window.addEventListener('firebase-ready', function() {
+  setTimeout(function() { applySiteConfig(); }, 200);
 });
