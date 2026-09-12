@@ -1,11 +1,13 @@
 /**
- * music-player.js — Floating bottom-right corner music widget v9
- * Robust audio loading with error handling, CORS proxy fallback, visual status
+ * music-player.js — Floating bottom-right corner music widget v11
+ * Auto-plays on first user interaction (click/tap/scroll)
+ * No manual start button needed — music starts by itself
  */
 var _musicAudio = null;
 var _musicPlaying = false;
 var _musicLoaded = false;
 var _musicError = false;
+var _autoStarted = false;
 var _defaultMusicUrl = 'https://cdn.pixabay.com/audio/2022/02/22/audio_d1718ab41b.mp3';
 
 (function() {
@@ -13,11 +15,8 @@ var _defaultMusicUrl = 'https://cdn.pixabay.com/audio/2022/02/22/audio_d1718ab41
   _musicAudio.loop = true;
   _musicAudio.volume = 0.4;
   _musicAudio.preload = 'auto';
-  // NOTE: Do NOT set crossOrigin — many MP3 hosts (Pixabay, etc.)
-  // don't send Access-Control-Allow-Origin, which causes the
-  // browser to block the audio entirely. Without this attribute,
-  // the browser loads the audio as an "opaque" resource, which
-  // works fine for <Audio> playback (only limits Canvas/WebAudio API).
+  // NOTE: Do NOT set crossOrigin — many MP3 hosts don't send
+  // Access-Control-Allow-Origin, causing browser to block audio.
 
   function initMusic() {
     var cfg = null;
@@ -45,8 +44,10 @@ var _defaultMusicUrl = 'https://cdn.pixabay.com/audio/2022/02/22/audio_d1718ab41
     _musicAudio.oncanplaythrough = function() {
       _musicLoaded = true;
       _musicError = false;
-      setStatus('ready', 'พร้อมเล่น — กด ▶');
+      setStatus('ready', 'พร้อมเล่น');
       console.log('[Music] Loaded:', url);
+      // Auto-play if user already interacted
+      tryAutoPlay();
     };
 
     _musicAudio.onerror = function() {
@@ -58,11 +59,28 @@ var _defaultMusicUrl = 'https://cdn.pixabay.com/audio/2022/02/22/audio_d1718ab41
 
     _musicAudio.onloadeddata = function() {
       _musicLoaded = true;
-      setStatus('ready', 'พร้อมเล่น — กด ▶');
+      setStatus('ready', 'พร้อมเล่น');
     };
 
-    // Force load
     _musicAudio.load();
+  }
+
+  // Try to auto-play — works after user gesture
+  function tryAutoPlay() {
+    if (_musicPlaying) return;
+    if (!_musicLoaded || _musicError) return;
+    _musicAudio.play().then(function() {
+      _musicPlaying = true;
+      _autoStarted = true;
+      var btn = document.getElementById('musicBtn');
+      var player = document.getElementById('musicPlayer');
+      if (btn) btn.textContent = '⏸';
+      if (player) player.classList.add('is-playing');
+      setStatus('playing', 'กำลังเล่น...');
+      console.log('[Music] Auto-played!');
+    }).catch(function(err) {
+      console.warn('[Music] Auto-play blocked — will retry on next interaction:', err);
+    });
   }
 
   // Set status text with icon
@@ -72,7 +90,6 @@ var _defaultMusicUrl = 'https://cdn.pixabay.com/audio/2022/02/22/audio_d1718ab41
     var icons = { loading: '⏳', ready: '✅', error: '❌', playing: '🎵' };
     statusEl.textContent = (icons[type] || '') + ' ' + text;
     statusEl.className = 'music-status music-status-' + type;
-    // Auto-hide status after 5s if ready or error
     if (type === 'ready' || type === 'error') {
       setTimeout(function() {
         if (statusEl) statusEl.style.opacity = '0.5';
@@ -93,6 +110,7 @@ var _defaultMusicUrl = 'https://cdn.pixabay.com/audio/2022/02/22/audio_d1718ab41
 
   if (!btn || !player) return;
 
+  // Manual play/pause button
   btn.addEventListener('click', function() {
     if (_musicPlaying) {
       _musicAudio.pause();
@@ -101,25 +119,24 @@ var _defaultMusicUrl = 'https://cdn.pixabay.com/audio/2022/02/22/audio_d1718ab41
       player.classList.remove('is-playing');
       setStatus('ready', 'หยุดชั่วคราว');
     } else {
-      // If audio errored, try reloading
       if (_musicError) {
         loadAudioUrl(_musicAudio.src);
         setStatus('loading', 'กำลังโหลดใหม่...');
       }
-
       _musicAudio.play().then(function() {
         btn.textContent = '⏸';
         _musicPlaying = true;
+        _autoStarted = true;
         player.classList.add('is-playing');
-        setStatus('playing', _musicAudio.src ? 'กำลังเล่น...' : 'กำลังเล่น...');
+        setStatus('playing', 'กำลังเล่น...');
       }).catch(function(err) {
         console.warn('[Music] Play blocked:', err);
-        setStatus('error', 'กด ▶ อีกครั้งเพื่อเล่น');
+        setStatus('error', 'กด ▶ อีกครั้ง');
       });
     }
   });
 
-  // Animate progress bar
+  // Progress bar
   function tick() {
     if (fill && _musicAudio.duration && isFinite(_musicAudio.duration)) {
       var pct = (_musicAudio.currentTime / _musicAudio.duration) * 100;
@@ -129,7 +146,37 @@ var _defaultMusicUrl = 'https://cdn.pixabay.com/audio/2022/02/22/audio_d1718ab41
   }
   tick();
 
-  // Also try to load from Firebase after delay
+  // ===== AUTO-PLAY ON ANY INTERACTION =====
+  // Browsers require a user gesture before playing audio.
+  // We listen for ANY click, tap, scroll, or key press.
+  function onFirstInteraction() {
+    if (_autoStarted) return; // already tried
+    console.log('[Music] User interacted — trying auto-play...');
+    _autoStarted = true;
+    // Small delay so the gesture registers with the browser
+    setTimeout(function() {
+      tryAutoPlay();
+      // If first attempt fails, retry a few more times
+      var retries = 0;
+      var retryInterval = setInterval(function() {
+        if (_musicPlaying || retries > 5) {
+          clearInterval(retryInterval);
+          return;
+        }
+        if (_musicLoaded && !_musicError) {
+          tryAutoPlay();
+        }
+        retries++;
+      }, 1000);
+    }, 100);
+  }
+
+  document.addEventListener('click', onFirstInteraction, { once: true });
+  document.addEventListener('touchstart', onFirstInteraction, { once: true });
+  document.addEventListener('keydown', onFirstInteraction, { once: true });
+  document.addEventListener('scroll', onFirstInteraction, { once: true, passive: true });
+
+  // Load from Firebase after delay
   if (typeof FIREBASE_READY !== 'undefined' && FIREBASE_READY) {
     setTimeout(function() {
       if (typeof fbGet === 'function') {
@@ -144,38 +191,6 @@ var _defaultMusicUrl = 'https://cdn.pixabay.com/audio/2022/02/22/audio_d1718ab41
       }
     }, 3000);
   }
-
-  // ===== First-interaction auto-play =====
-  // Browsers block autoplay without user gesture, so we listen for
-  // ANY click/tap on the page and try to start music automatically.
-  var _autoStarted = false;
-  function tryAutoStart() {
-    if (_autoStarted || _musicPlaying) return;
-    _autoStarted = true;
-    if (_musicLoaded && !_musicError) {
-      _musicAudio.play().then(function() {
-        btn.textContent = '⏸';
-        _musicPlaying = true;
-        player.classList.add('is-playing');
-        setStatus('playing', 'กำลังเล่น...');
-      }).catch(function() {});
-    } else if (_musicError) {
-      // Retry loading
-      loadAudioUrl(_musicAudio.src || _defaultMusicUrl);
-      setTimeout(function() {
-        if (!_musicPlaying && _musicLoaded) {
-          _musicAudio.play().then(function() {
-            btn.textContent = '⏸';
-            _musicPlaying = true;
-            player.classList.add('is-playing');
-            setStatus('playing', 'กำลังเล่น...');
-          }).catch(function() {});
-        }
-      }, 2000);
-    }
-  }
-  document.addEventListener('click', tryAutoStart, { once: true });
-  document.addEventListener('touchstart', tryAutoStart, { once: true });
 
   // Expose internals for admin
   window._musicLoadAudioUrl = loadAudioUrl;
@@ -205,19 +220,5 @@ function setMusicTitle(title) {
   } else {
     var titleEl = document.querySelector('.music-title-text');
     if (titleEl && title) titleEl.textContent = title;
-  }
-}
-
-// START SITE MUSIC — called from the big button on home page
-function startSiteMusic() {
-  var btn = document.getElementById('musicBtn');
-  var startBtn = document.getElementById('musicStartBtn');
-  if (_musicPlaying) return; // already playing
-  if (btn) btn.click(); // triggers play via the main handler
-  // Hide the start button after click
-  if (startBtn) {
-    startBtn.classList.add('is-playing');
-    startBtn.innerHTML = '<span class="music-start-icon">🎵</span><span class="music-start-text">กำลังเล่น...</span>';
-    setTimeout(function() { startBtn.style.display = 'none'; }, 2000);
   }
 }

@@ -89,6 +89,11 @@ function createMemberCard(m, isOwner) {
   img.src = m.image || 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect fill="#222" width="100" height="100"/><text x="50" y="55" text-anchor="middle" fill="#666" font-size="28">' + (m.name ? m.name[0] : '?') + '</text></svg>');
   img.alt = m.name;
   img.style.cssText = 'width:100%;height:100%;object-fit:cover;';
+  // Fallback to inline SVG if image fails to load
+  img.onerror = function() {
+    this.onerror = null;
+    this.src = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200"><rect fill="#1a1a1a" width="200" height="200"/><text x="100" y="112" text-anchor="middle" fill="#d1d1d1" font-family="Orbitron,monospace" font-size="64" font-weight="700">' + (m.name ? m.name[0] : '?') + '</text></svg>');
+  };
   avatarDiv.appendChild(img);
 
   // Badge — dark grey, white text, top-right
@@ -143,6 +148,12 @@ function openProfile(m) {
   img.src = m.image || '';
   img.alt = m.name;
   img.style.cssText = 'width:100%;height:100%;object-fit:cover;border-radius:8px;';
+  // Fallback to inline SVG if image fails to load
+  img.onerror = function() {
+    this.onerror = null;
+    this.style.cssText = 'width:100%;height:100%;object-fit:cover;border-radius:8px;';
+    this.src = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200"><rect fill="#1a1a1a" width="200" height="200"/><text x="100" y="112" text-anchor="middle" fill="#d1d1d1" font-family="Orbitron,monospace" font-size="64" font-weight="700">' + (m.name ? m.name[0] : '?') + '</text></svg>');
+  };
   if (m.image) {
     media.appendChild(img);
   } else {

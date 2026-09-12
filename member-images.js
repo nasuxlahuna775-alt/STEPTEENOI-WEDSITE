@@ -1,26 +1,38 @@
 /**
- * member-images.js — Placeholder avatar URLs & demo member data
- * Uses generated avatar placeholders
+ * member-images.js — Inline SVG avatar placeholders & demo member data
+ * No external API dependency — avatars are self-contained SVG data URIs
  */
+
+// Generate a monochrome SVG data-URI avatar from initials
+function makeAvatarSVG(initials, bg) {
+  bg = bg || '#1a1a1a';
+  var fg = '#d1d1d1';
+  var svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">' +
+    '<rect fill="' + bg + '" width="200" height="200"/>' +
+    '<text x="100" y="112" text-anchor="middle" fill="' + fg + '" font-family="Orbitron,monospace" font-size="64" font-weight="700">' + initials + '</text>' +
+    '</svg>';
+  return 'data:image/svg+xml,' + encodeURIComponent(svg);
+}
+
 var MEMBER_IMAGES = [
-  'https://api.dicebear.com/7.x/initials/svg?seed=T&backgroundColor=1a1a1a&textColor=d1d1d1',
-  'https://api.dicebear.com/7.x/initials/svg?seed=K&backgroundColor=1a1a1a&textColor=d1d1d1',
-  'https://api.dicebear.com/7.x/initials/svg?seed=A&backgroundColor=1a1a1a&textColor=d1d1d1',
-  'https://api.dicebear.com/7.x/initials/svg?seed=M&backgroundColor=1a1a1a&textColor=d1d1d1',
-  'https://api.dicebear.com/7.x/initials/svg?seed=N&backgroundColor=1a1a1a&textColor=d1d1d1',
-  'https://api.dicebear.com/7.x/initials/svg?seed=R&backgroundColor=1a1a1a&textColor=d1d1d1',
-  'https://api.dicebear.com/7.x/initials/svg?seed=B&backgroundColor=1a1a1a&textColor=d1d1d1',
-  'https://api.dicebear.com/7.x/initials/svg?seed=F&backgroundColor=1a1a1a&textColor=d1d1d1',
-  'https://api.dicebear.com/7.x/initials/svg?seed=P&backgroundColor=1a1a1a&textColor=d1d1d1',
-  'https://api.dicebear.com/7.x/initials/svg?seed=N&backgroundColor=1a1a1a&textColor=d1d1d1',
-  'https://api.dicebear.com/7.x/initials/svg?seed=PK&backgroundColor=1a1a1a&textColor=d1d1d1',
-  'https://api.dicebear.com/7.x/initials/svg?seed=MX&backgroundColor=1a1a1a&textColor=d1d1d1',
-  'https://api.dicebear.com/7.x/initials/svg?seed=PN&backgroundColor=1a1a1a&textColor=d1d1d1',
-  'https://api.dicebear.com/7.x/initials/svg?seed=TG&backgroundColor=1a1a1a&textColor=d1d1d1',
-  'https://api.dicebear.com/7.x/initials/svg?seed=W&backgroundColor=1a1a1a&textColor=d1d1d1'
+  makeAvatarSVG('ST'),   // STEPTEENOI
+  makeAvatarSVG('K'),    // KORN
+  makeAvatarSVG('A'),    // ART
+  makeAvatarSVG('M'),    // MAY
+  makeAvatarSVG('N'),    // NINE
+  makeAvatarSVG('R'),    // RIN
+  makeAvatarSVG('B'),    // BOY
+  makeAvatarSVG('F'),    // FAH
+  makeAvatarSVG('P'),    // PEA
+  makeAvatarSVG('NM'),   // NAM
+  makeAvatarSVG('PK'),   // PAKE
+  makeAvatarSVG('MX'),   // MAX
+  makeAvatarSVG('PN'),   // PUN
+  makeAvatarSVG('TG'),   // TIGER
+  makeAvatarSVG('W')     // WIN
 ];
 
-// Demo member data — used when Firebase is not configured
+// Demo member data — used when Firebase has no data
 var DEMO_MEMBERS = [
   { id: 'demo1', name: 'STEPTEENOI', role: 'owner', facebook: 'StepTeenOiRP', image: MEMBER_IMAGES[0], desc: 'ผู้ก่อตั้ง STEPTEENOI' },
   { id: 'demo2', name: 'KORN', role: 'core', facebook: 'korn.stt', image: MEMBER_IMAGES[1], desc: 'LEADER' },

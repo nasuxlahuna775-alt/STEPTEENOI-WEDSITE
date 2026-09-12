@@ -11,15 +11,16 @@
  * 7. Fill in YOUR config below
  */
 
-// ========== PASTE YOUR FIREBASE CONFIG HERE ==========
+// ========== YOUR FIREBASE CONFIG ==========
 var firebaseConfig = {
-  apiKey: "",
-  authDomain: "",
-  databaseURL: "",
-  projectId: "",
-  storageBucket: "",
-  messagingSenderId: "",
-  appId: ""
+  apiKey: "AIzaSyBwKXYJji4qQNoOvhcqpdBWHdpPLQ4sXJ0",
+  authDomain: "tarsaray1.firebaseapp.com",
+  databaseURL: "https://tarsaray1-default-rtdb.us-central1.firebasedatabase.app",
+  projectId: "tarsaray1",
+  storageBucket: "tarsaray1.firebasestorage.app",
+  messagingSenderId: "782765725846",
+  appId: "1:782765725846:web:d645224c9942a0075acab7",
+  measurementId: "G-WF8T4DSX5D"
 };
 // ====================================================
 

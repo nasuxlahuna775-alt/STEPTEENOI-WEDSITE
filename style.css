@@ -220,47 +220,6 @@ a:hover { color: var(--fg); }
   border-width: 0 1px 1px 0;
 }
 
-/* ===== START MUSIC BUTTON (Home hero) ===== */
-.music-start-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  margin-top: 24px;
-  padding: 12px 28px;
-  background: rgba(255,255,255,0.04);
-  border: 1px solid rgba(255,255,255,0.15);
-  border-radius: 8px;
-  color: var(--silver);
-  font-family: 'Rajdhani', sans-serif;
-  font-size: 0.9rem;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  cursor: pointer;
-  transition: all 0.3s;
-  animation: music-start-pulse 2.5s ease-in-out infinite;
-}
-.music-start-btn:hover {
-  background: rgba(255,255,255,0.1);
-  border-color: var(--silver);
-  color: #fff;
-  box-shadow: 0 0 20px rgba(255,255,255,0.08);
-}
-.music-start-icon {
-  font-size: 1.2rem;
-}
-.music-start-text {
-  text-shadow: var(--glow-sm);
-}
-@keyframes music-start-pulse {
-  0%, 100% { opacity: 0.7; border-color: rgba(255,255,255,0.1); }
-  50% { opacity: 1; border-color: rgba(255,255,255,0.3); }
-}
-.music-start-btn.is-playing {
-  opacity: 0.4;
-  pointer-events: none;
-  animation: none;
-}
-
 /* ===== MUSIC PLAYER (bottom-right) ===== */
 .music-player {
   position: fixed;
